@@ -2953,8 +2953,8 @@ function setColor(c){styleKey=c;saveData();closeP('custP');notif('Style updated!
 async function buyPrem(){
   if(isPrem){notif('You already have Premium ⭐');return;}
   if(!_user){notif('Sign in first to purchase Premium');openP('authScreen');return;}
-  // ── Replace YOUR-VERCEL-URL with your actual Vercel deployment URL ──
-  const PAYMENT_URL='https://YOUR-VERCEL-URL.vercel.app/api/create-checkout';
+  // ── Replace sv-payments.vercel.app with your actual Vercel deployment URL ──
+  const PAYMENT_URL='https://sv-payments.vercel.app/api/create-checkout';
   const btn=document.getElementById('premBuyBtn');
   if(btn){btn.textContent='Opening...';btn.disabled=true;}
   try{
@@ -3720,7 +3720,7 @@ function _checkOfflineCoins(){
 // 9. SEASON PASS
 // ════════════════════════════════════════════════════
 let _hasSeason=false;
-const SEASON_PRICE_URL='https://YOUR-VERCEL-URL.vercel.app/api/create-checkout';
+const SEASON_PRICE_URL='https://sv-payments.vercel.app/api/create-checkout';
 
 function _loadSeason(){
   const s=JSON.parse(localStorage.getItem('sv5_season')||'{}');
