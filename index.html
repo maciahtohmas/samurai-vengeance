@@ -4136,12 +4136,6 @@ async function initFB(){
     const cfg=FIREBASE_CONFIG;
 
     // Detect unconfigured placeholder keys
-    if(cfg.apiKey.startsWith('REPLACE_')){
-      console.warn('⚠️ Firebase config not set. Fill in FIREBASE_CONFIG at the top of the script.');
-      const warn=document.getElementById('fbConfigWarn');
-      if(warn)warn.style.display='block';
-      return false;
-    }
 
     // Initialize (safe if already initialized)
     if(!firebase.apps.length){
