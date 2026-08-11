@@ -4218,10 +4218,6 @@ async function initFB(){
     return false;
   }
 }
-    if(typeof firebase==='undefined'){
-      console.warn('Firebase SDK not loaded — check network connection');
-      return false;
-    }
 
     // Use the config defined at the top of this file
     const cfg=FIREBASE_CONFIG;
