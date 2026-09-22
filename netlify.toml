@@ -5,6 +5,23 @@
 # ads.txt, robots.txt and sitemap.xml, which breaks AdSense
 # verification and SEO crawling. This game is a single static
 # page with no client-side routing, so no redirect is needed.
+#
+# The /api/* rule below is a targeted exception, NOT a catch-all — it only
+# matches /api/, so ads.txt, robots.txt and sitemap.xml are untouched.
+
+[functions]
+  directory = "netlify/functions"
+  # firebase-admin uses dynamic requires that the esbuild bundler can trip
+  # over. Leaving it external means Netlify installs it as a real dependency
+  # instead of trying to inline it.
+  external_node_modules = ["firebase-admin"]
+
+# Pretty URLs for the Stripe endpoints, so the game can call a relative
+# /api/create-checkout instead of a hardcoded deployment hostname.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
 
 [[headers]]
   for = "/*"
