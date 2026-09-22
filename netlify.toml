@@ -9,6 +9,15 @@
 # The /api/* rule below is a targeted exception, NOT a catch-all — it only
 # matches /api/, so ads.txt, robots.txt and sitemap.xml are untouched.
 
+[build.environment]
+  # Netlify's secret scanner flags the Firebase WEB api key in index.html
+  # (AIzaSy...). That key is public by design — Firebase web config ships in
+  # client code and authorizes nothing on its own; Firestore rules and Auth
+  # settings are what actually protect the data. Skipping index.html silences
+  # the false positive while leaving scanning on everywhere else, including
+  # the function bundles, which is where a real leak would matter.
+  SECRETS_SCAN_OMIT_PATHS = "index.html"
+
 [functions]
   directory = "netlify/functions"
   # firebase-admin uses dynamic requires that the esbuild bundler can trip
