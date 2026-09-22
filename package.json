@@ -1,0 +1,10 @@
+{
+  "name": "samurai-vengeance",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Samurai Vengeance — static game site plus Stripe payment functions",
+  "dependencies": {
+    "stripe": "^14.0.0",
+    "firebase-admin": "^12.0.0"
+  }
+}
