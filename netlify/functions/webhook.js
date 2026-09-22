@@ -17,6 +17,32 @@ const admin  = require('firebase-admin');
 // with no clue which variable is wrong.
 let _initError = null;
 
+// Accept a private key in whatever shape it survived the copy-paste in.
+// Env var UIs and phone keyboards mangle this value in predictable ways:
+// the JSON's surrounding quotes get included, the \n escapes arrive literal
+// or double-escaped, or real newlines come through instead. All are fine;
+// what matters is ending up with genuine newlines and no stray quotes.
+// Returns null if the result is not a plausible PEM key.
+function normalizePrivateKey(raw) {
+  let k = (raw || '').trim();
+  if (!k) return null;
+
+  // Strip one layer of wrapping quotes, if the whole JSON value was pasted.
+  if ((k.startsWith('"') && k.endsWith('"')) ||
+      (k.startsWith("'") && k.endsWith("'"))) {
+    k = k.slice(1, -1).trim();
+  }
+
+  // Double-escaped first (\\n), then single (\n). Order matters.
+  k = k.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n');
+
+  // Some inputs arrive with literal CRLF; PEM parsers want bare newlines.
+  k = k.replace(/\r\n/g, '\n');
+
+  if (!k.includes('BEGIN') || !k.includes('END')) return null;
+  return k;
+}
+
 function getDb() {
   if (!admin.apps.length) {
     const missing = ['FIREBASE_PROJECT_ID', 'FIREBASE_CLIENT_EMAIL', 'FIREBASE_PRIVATE_KEY']
@@ -25,15 +51,32 @@ function getDb() {
       _initError = 'Missing env vars: ' + missing.join(', ');
       return null;
     }
-    admin.initializeApp({
-      credential: admin.credential.cert({
-        projectId:   process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Netlify stores the key with literal \n sequences; turn them back
-        // into real newlines or the PEM parse fails.
-        privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-    });
+
+    const privateKey = normalizePrivateKey(process.env.FIREBASE_PRIVATE_KEY);
+    if (!privateKey) {
+      _initError = 'FIREBASE_PRIVATE_KEY is set but is not a PEM key — it must '
+                 + 'contain both BEGIN and END PRIVATE KEY lines. Check that the '
+                 + 'surrounding double quotes from the JSON were not included, '
+                 + 'and that the whole value was pasted (it is ~1700 chars).';
+      return null;
+    }
+
+    try {
+      admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId:   process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey,
+        }),
+      });
+    } catch (err) {
+      // Without this, a malformed key throws raw out of the handler and
+      // Netlify reports only "Invalid PEM formatted message" with no hint
+      // about which variable or why.
+      _initError = 'Firebase credential rejected: ' + err.message
+                 + ' — check FIREBASE_PRIVATE_KEY and FIREBASE_CLIENT_EMAIL.';
+      return null;
+    }
   }
   return admin.firestore();
 }
