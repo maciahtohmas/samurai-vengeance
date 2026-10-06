@@ -1,0 +1,108 @@
+# Samurai Vengeance — Netlify configuration
+#
+# IMPORTANT: No catch-all redirect here on purpose.
+# A rule like  from = "/*"  ->  to = "/index.html"  intercepts
+# ads.txt, robots.txt and sitemap.xml, which breaks AdSense
+# verification and SEO crawling. This game is a single static
+# page with no client-side routing, so no redirect is needed.
+#
+# The /api/* rule below is a targeted exception, NOT a catch-all — it only
+# matches /api/, so ads.txt, robots.txt and sitemap.xml are untouched.
+
+[functions]
+  directory = "netlify/functions"
+  # firebase-admin uses dynamic requires that the esbuild bundler can trip
+  # over. Leaving it external means Netlify installs it as a real dependency
+  # instead of trying to inline it.
+  external_node_modules = ["firebase-admin"]
+
+# Pretty URLs for the Stripe endpoints, so the game can call a relative
+# /api/create-checkout instead of a hardcoded deployment hostname.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# ── Canonical URLs ──────────────────────────────────────────────────────
+# Netlify serves a page file at BOTH /about.html and /about, and analytics
+# confirmed real traffic landing on each: /about had 7 views and /about.html
+# had 5 over the same day. To a search engine that is two pages with identical
+# content, and the ranking signal splits between them.
+#
+# The clean form is canonical, because it is the one Netlify's own conventions
+# favour and fighting the platform here risks a redirect loop. Every canonical
+# tag, og:url, internal link and sitemap entry now points at the clean URL, and
+# these 301s move anything still asking for the .html form onto it. A 301
+# passes the accumulated signal across, so the indexing already requested for
+# the .html URLs is not wasted.
+[[redirects]]
+  from = "/about.html"
+  to = "/about"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/how-to-play.html"
+  to = "/how-to-play"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/privacy.html"
+  to = "/privacy"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/terms.html"
+  to = "/terms"
+  status = 301
+  force = true
+
+# index.html is the game itself; send it to the bare root for the same reason.
+[[redirects]]
+  from = "/index.html"
+  to = "/"
+  status = 301
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# The game must never be served from cache, or players sit on an old build and
+# never see a fix. Netlify matches header rules against the REQUEST path, and
+# almost every visitor asks for "/" rather than "/index.html", so scoping this
+# to /index.html alone left the main URL cacheable. Both are listed.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma = "no-cache"
+    Expires = "0"
+
+[[headers]]
+  for = "/ads.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/robots.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+
+[[headers]]
+  for = "/sitemap.xml"
+  [headers.values]
+    Content-Type = "application/xml; charset=utf-8"
