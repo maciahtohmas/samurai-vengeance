@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dev Notes — Samurai Vengeance</title>
+<meta name="description" content="Notes from building Samurai Vengeance, a 1000-stage action platformer that runs in a browser tab. Bugs, fixes and things that cost me weeks.">
+<link rel="canonical" href="https://samuraivengeance.com/devlog">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="Dev Notes — Samurai Vengeance">
+<meta property="og:description" content="Notes from building a 1000-stage action platformer that runs in a browser tab. Bugs, fixes and things that cost me weeks.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://samuraivengeance.com/devlog">
+<meta property="og:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="theme-color" content="#0a0008">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--gold:#c9952a;--gold-lt:#fbbf24;--ink:#0a0008;--txt:rgba(236,214,168,.82);--dim:rgba(236,214,168,.52)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--ink);color:var(--txt);font-family:Georgia,'Times New Roman',serif;
+       line-height:1.7;font-size:16px;
+       background-image:radial-gradient(ellipse at 50% -10%,rgba(120,20,30,.22),transparent 60%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  header{border-bottom:1px solid rgba(201,149,42,.22);padding-bottom:18px;margin-bottom:30px}
+  .brand{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+         text-decoration:none;display:inline-block;margin-bottom:14px}
+  .brand:hover{color:var(--gold-lt)}
+  h1{font-size:clamp(25px,6vw,34px);color:#f0d9a0;line-height:1.22;margin-bottom:10px;font-weight:700}
+  .lede{color:var(--dim);font-size:15px}
+  a{color:var(--gold-lt)}
+  .post{display:block;text-decoration:none;color:inherit;
+        border-bottom:1px solid rgba(255,255,255,.07);padding:20px 0}
+  .post:last-of-type{border-bottom:none}
+  .post:hover h2{color:#ffd978}
+  .post h2{font-size:clamp(18px,4.4vw,22px);color:var(--gold-lt);font-weight:700;
+           line-height:1.3;margin-bottom:7px}
+  .meta{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin-bottom:9px}
+  .post p{color:var(--txt);font-size:15px}
+  .play{display:inline-block;margin:30px 0 8px;padding:13px 26px;
+        background:linear-gradient(135deg,#7c4a00,#c9952a);color:#150c02;text-decoration:none;
+        border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid rgba(201,149,42,.18);
+         font-size:13px;color:var(--dim)}
+  footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="brand" href="/">&#9876; Samurai Vengeance</a>
+  <h1>Dev notes</h1>
+  <p class="lede">Things that went wrong building a 1000-stage action platformer that runs in a browser tab, and what fixed them.</p>
+</header>
+
+<a class="post" href="/devlog-120hz-physics-bug">
+  <div class="meta">7 October 2026</div>
+  <h2>My game was running at double speed on most modern phones</h2>
+  <p>Every constant in my update loop was a per-frame value, which is correct on a
+  60Hz display and wrong on every other one. It took a rejection letter to find it.</p>
+</a>
+
+<a class="play" href="/">Play the game</a>
+<footer><a href="/">Play</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+</div>
+</body>
+</html>

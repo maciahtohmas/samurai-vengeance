@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My game ran at 2x speed on 120Hz phones — frame-rate dependent physics, and the fix</title>
+<meta name="description" content="If your game calls update() once per requestAnimationFrame and your gravity and jump values are per-frame constants, it runs at double speed on a 120Hz phone and 2.4x on a 144Hz monitor. How to detect it and how to fix it with a fixed timestep.">
+<link rel="canonical" href="https://samuraivengeance.com/devlog-120hz-physics-bug">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="My game ran at 2x speed on 120Hz phones — frame-rate dependent physics, and the fix">
+<meta property="og:description" content="Every constant in my update loop was a per-frame value. Correct on 60Hz, wrong on everything else. How to detect it and fix it with a fixed timestep.">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2026-10-07">
+<meta property="og:url" content="https://samuraivengeance.com/devlog-120hz-physics-bug">
+<meta property="og:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="theme-color" content="#0a0008">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"TechArticle",
+"headline":"My game ran at 2x speed on 120Hz phones — frame-rate dependent physics, and the fix",
+"description":"If your game calls update() once per requestAnimationFrame and your gravity and jump values are per-frame constants, it runs at double speed on a 120Hz phone and 2.4x on a 144Hz monitor.",
+"datePublished":"2026-10-07",
+"author":{"@type":"Organization","name":"Billfiti Studios"},
+"publisher":{"@type":"Organization","name":"Billfiti Studios"},
+"mainEntityOfPage":"https://samuraivengeance.com/devlog-120hz-physics-bug"}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--gold:#c9952a;--gold-lt:#fbbf24;--ink:#0a0008;--txt:rgba(236,214,168,.82);--dim:rgba(236,214,168,.52)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--ink);color:var(--txt);font-family:Georgia,'Times New Roman',serif;
+       line-height:1.7;font-size:16px;
+       background-image:radial-gradient(ellipse at 50% -10%,rgba(120,20,30,.22),transparent 60%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  header{border-bottom:1px solid rgba(201,149,42,.22);padding-bottom:18px;margin-bottom:30px}
+  .brand{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+         text-decoration:none;display:inline-block;margin-bottom:14px}
+  .brand:hover{color:var(--gold-lt)}
+  h1{font-size:clamp(24px,5.6vw,33px);color:#f0d9a0;line-height:1.24;margin-bottom:12px;font-weight:700}
+  .meta{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  h2{font-size:clamp(18px,4.2vw,21px);color:var(--gold-lt);margin:36px 0 10px;font-weight:700}
+  p{margin-bottom:14px}
+  ul,ol{margin:0 0 16px 22px}
+  li{margin-bottom:7px}
+  a{color:var(--gold-lt)}
+  strong{color:#e8d9b0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;
+       background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;color:#f0d9a0}
+  pre{background:rgba(255,255,255,.04);border:1px solid rgba(201,149,42,.16);border-radius:4px;
+      padding:14px 16px;margin:4px 0 20px;overflow-x:auto;line-height:1.55}
+  pre code{background:none;padding:0;font-size:13.5px;color:var(--txt)}
+  table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  th{color:var(--gold);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:400}
+  td:first-child{color:#e8d9b0;white-space:nowrap}
+  blockquote{border-left:2px solid rgba(201,149,42,.4);padding-left:16px;margin:0 0 16px;
+             color:var(--dim);font-style:italic}
+  .play{display:inline-block;margin:30px 0 8px;padding:13px 26px;
+        background:linear-gradient(135deg,#7c4a00,#c9952a);color:#150c02;text-decoration:none;
+        border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid rgba(201,149,42,.18);
+         font-size:13px;color:var(--dim)}
+  footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="brand" href="/devlog">&#9876; Dev Notes</a>
+  <h1>My game ran at double speed on most modern phones</h1>
+  <p class="meta">7 October 2026</p>
+</header>
+
+<p>I shipped a browser action platformer with a bug that made it unplayable for a large
+share of the people who tried it, and I had no idea for weeks. Posting it because the
+failure mode is invisible if you only test on one device, and because the thing that
+finally exposed it was a rejection letter that never mentioned it.</p>
+
+<h2>The bug</h2>
+
+<p>My game loop looked like this, which is the shape almost every browser game starts with:</p>
+
+<pre><code>function loop(){
+  draw();
+  update();
+  requestAnimationFrame(loop);
+}</code></pre>
+
+<p><code>update()</code> runs once per animation frame. Inside it, every constant was a
+<strong>per-frame</strong> value — gravity <code>0.57</code>, jump velocity
+<code>-13.5</code>, friction <code>0.81</code>, every cooldown, every invincibility
+window, every timer counted down one per call.</p>
+
+<p>On a 60Hz display that is all perfectly correct, and 60Hz was the only kind of display
+I ever tested on.</p>
+
+<p><code>requestAnimationFrame</code> fires at the display's refresh rate. Most phones
+shipping today are 120Hz — iPhone Pro models, most Android flagships. Gaming monitors are
+144Hz or 165Hz. On those, <code>update()</code> is called twice as often, or more, and
+every one of those constants is applied twice as often.</p>
+
+<p>The game runs at double speed. Not "feels a bit fast" — <em>double</em>. Jump arcs are
+wrong, so gaps you tuned become unclearable. Enemy attack timing is wrong. The parry window
+is half as long in real time as you designed it.</p>
+
+<h2>Measuring it</h2>
+
+<p>After the fact I measured how many <code>update()</code> calls it took for the player
+to fall 200 pixels. The answer is a constant — 25 — because the physics has no idea time
+exists. That constant means something completely different depending on the display:</p>
+
+<table>
+<tr><th>Refresh rate</th><th>Time for that fall</th><th>Speed</th></tr>
+<tr><td>60 Hz</td><td>0.42 s</td><td>1&times; (correct)</td></tr>
+<tr><td>120 Hz</td><td>0.21 s</td><td>2&times;</td></tr>
+<tr><td>144 Hz</td><td>0.17 s</td><td>2.4&times;</td></tr>
+<tr><td>165 Hz</td><td>0.15 s</td><td>2.75&times;</td></tr>
+</table>
+
+<p>You can check your own game in about a minute. Freeze the player, run
+<code>update()</code> in a loop a fixed number of times, and see how far they moved. If the
+distance only depends on the number of calls and not on elapsed time, your physics is tied
+to the refresh rate.</p>
+
+<p>A quicker smoke test: open your game on a 120Hz phone next to a 60Hz one. If it looks
+faster on the newer phone, you have this.</p>
+
+<h2>How I found it</h2>
+
+<p>I didn't. A game portal rejected the submission with one line:</p>
+
+<blockquote>The overall quality of the game does not yet meet the expectations of our platform.</blockquote>
+
+<p>No specifics. The natural reading of that is "your game isn't good enough," which is
+not actionable and sent me straight toward blaming the art.</p>
+
+<p>Instead I went through their published requirements line by line looking for something
+concrete I had broken. One of them read: <em>"Game mechanics perform identically on 60Hz,
+144Hz and 165Hz monitors."</em> That was the entire clue.</p>
+
+<p>Their QA reviewer was almost certainly on a gaming monitor, and launched a game running
+at two and a half times speed. From their side that <em>is</em> a quality problem. It just
+wasn't the one I would ever have guessed.</p>
+
+<h2>The fix</h2>
+
+<p>The usual advice is to multiply everything by delta time. That works, but it means
+touching every tuned constant in your game and re-balancing all of them, which for me
+would have meant re-tuning combat I was happy with.</p>
+
+<p>A <strong>fixed timestep accumulator</strong> avoids that entirely. You keep
+<code>update()</code> meaning exactly 1/60th of a second, and call it the correct number of
+times per frame instead:</p>
+
+<pre><code>const STEP = 1000 / 60;
+let acc = 0, prev = null;
+
+function loop(ts){
+  draw();
+
+  if (prev === null) prev = ts;
+  let dt = ts - prev;
+  prev = ts;
+
+  if (dt &gt; 250) dt = 250;   // tab was backgrounded
+  acc += dt;
+
+  let steps = 0;
+  while (acc &gt;= STEP &amp;&amp; steps &lt; 5){
+    update();
+    acc -= STEP;
+    steps++;
+  }
+  if (steps &gt;= 5) acc = 0;  // can't keep up — drop the backlog
+
+  requestAnimationFrame(loop);
+}</code></pre>
+
+<p><strong>Not one tuned constant had to change.</strong> Gravity is still 0.57, the jump
+is still -13.5, every cooldown still counts in frames — because a frame still means 1/60s.
+Rendering continues to run once per animation frame, so a 144Hz display still renders at
+144Hz. Only the simulation is pinned.</p>
+
+<p>It also fixes the opposite problem. On a slow device managing 40fps, the accumulator
+runs <code>update()</code> twice on some frames and the game runs at the correct speed
+instead of in slow motion.</p>
+
+<h2>Three things that will bite you</h2>
+
+<p><strong>Clamp the delta.</strong> A backgrounded tab returns a delta of many seconds.
+Without the clamp, the loop tries to simulate all of it at once and locks the page.</p>
+
+<p><strong>Cap the catch-up steps.</strong> If a device genuinely cannot keep up, an
+uncapped <code>while</code> loop accrues a debt it will never repay and spirals. Five steps
+then drop the backlog.</p>
+
+<p><strong>Check <code>prev</code> against <code>null</code>, not falsiness.</strong> A
+timestamp of <code>0</code> is legitimate on the first frame, and <code>if (!prev)</code>
+quietly mishandles it.</p>
+
+<h2>What I'd do differently</h2>
+
+<p>Test on a high-refresh device before shipping anything. I develop on one phone and one
+laptop, both 60Hz, and that blind spot shipped to everyone.</p>
+
+<p>And when a vague rejection arrives, don't assume it means the thing you're already
+insecure about. I was ready to rebuild my art. It was a one-line bug in the game loop.</p>
+
+<a class="play" href="/">Play Samurai Vengeance</a>
+<p style="font-size:13px;color:var(--dim)">Free, runs in the browser, no sign-up. Keyboard on desktop or touch on a phone.</p>
+
+<footer><a href="/">Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+</div>
+</body>
+</html>
