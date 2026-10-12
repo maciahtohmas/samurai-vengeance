@@ -6080,7 +6080,7 @@ function goMenu(){
   saveData(); // persist progress before going to menu
   _releaseWakeLock();
   P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
-  gState='menu';paused=false;
+  gState='menu';paused=false;_panelPaused.clear();
   // Show Continue button if player has progress
   _updateMenuButtons();
   // Only close game-related overlays — never touch authScreen or gdpr
@@ -6107,9 +6107,20 @@ function doPause(){
   document.getElementById('pauseScreen').classList.toggle('active',paused);
   document.getElementById('pauseBtn').textContent=paused?'▶':'❙❙';
 }
+// A panel opened in the middle of a stage (the Starter Bundle offer, the
+// Instructions button) used to sit on top of a game that kept running, so
+// enemies kept moving and could hit you while you read. Now opening one
+// pauses, and closing the last one resumes. Panels opened while already
+// paused (from the pause screen) leave the pause alone.
+const _panelPaused=new Set();
 function openP(id){
-  if(id==='shopP') _refreshShopUI();document.getElementById(id).classList.add('active');updateHUD();}
-function closeP(id){document.getElementById(id).classList.remove('active');}
+  if(id==='shopP') _refreshShopUI();
+  if(gState==='playing'&&!paused){paused=true;_panelPaused.add(id);}
+  document.getElementById(id).classList.add('active');updateHUD();}
+function closeP(id){
+  document.getElementById(id).classList.remove('active');
+  if(_panelPaused.delete(id)&&_panelPaused.size===0&&gState==='playing')paused=false;
+}
 function openCust(){
   document.getElementById('custP').classList.add('active');
   document.getElementById('cLock').style.display=(highestLvl>=20||isPrem)?'none':'flex';
