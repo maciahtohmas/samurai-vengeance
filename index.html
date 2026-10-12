@@ -6914,9 +6914,13 @@ function closeRewardAd(revive){
   if(revive){
     // Revive player
     document.getElementById('goScreen').classList.remove('active');
-    P.hp=Math.floor(P.maxHp*.5);P.inv=120;P.comboStep=0;P.comboWindow=0;
-    gState='playing';deaths4Ad=0;
-    initLevel();
+    // Revive where you fell, enemies and boss damage as they were. This used
+    // to restart the whole stage, and initLevel then topped HP up to 80%,
+    // which made it a worse deal than "No thanks" then Retry (100% HP).
+    P.hp=Math.floor(P.maxHp*.5);P.inv=150;P.comboStep=0;P.comboWindow=0;
+    P.vx=0;P.vy=0;P.atk=false;P.atkT=0;P.parry=false;P.parryT=0;P.punishT=0;
+    _deathAt=0;projs=[];
+    gState='playing';paused=false;deaths4Ad=0;
     notif('💚 Revived! Fight on!');
     _checkAch('kills',ST.kills); // trigger ach check
   } else if(gState==='gameover'){
