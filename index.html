@@ -447,6 +447,16 @@ canvas{
 .legal-text a{color:#fbbf24;cursor:pointer;}
 
 /* ══ GDPR BANNER ══ */
+.bf-follow{display:none;text-align:center;pointer-events:auto;}
+.bf-follow.on{display:block;}
+.bf-follow .bf-lbl{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:rgba(236,214,168,.55);margin-bottom:6px;}
+.bf-follow .bf-links{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;}
+.bf-follow a{font-family:Georgia,serif;font-size:12px;letter-spacing:.06em;color:#fbbf24;text-decoration:none;
+  border:1px solid rgba(220,180,80,.35);border-radius:3px;padding:6px 11px;background:rgba(0,0,0,.35);}
+.bf-follow a:hover,.bf-follow a:focus-visible{background:rgba(220,180,80,.15);outline:none;}
+.bf-follow.card{border:1px solid rgba(220,180,80,.3);border-radius:4px;padding:12px 10px;margin:4px 0 16px;background:rgba(220,180,80,.05);}
+.bf-follow.card .bf-name{font-size:15px;color:#f0d9a0;margin-bottom:4px;letter-spacing:.08em;}
+.bf-follow.card .bf-sub{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:10px;line-height:1.45;}
 #tutCoach{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 62px);transform:translateX(-50%);
   width:min(360px,calc(100vw - 32px));z-index:120;display:none;pointer-events:none;text-align:center;
   background:rgba(8,2,6,.88);border:1px solid rgba(220,180,80,.45);border-radius:4px;padding:10px 14px 8px;
@@ -695,6 +705,7 @@ canvas{
         <a href="/privacy" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Privacy</a>
         <a href="/terms" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Terms</a>
       </nav>
+      <div class="bf-follow" data-where="menu" style="margin-top:12px;"></div>
     </div>
 
   </div>
@@ -1291,8 +1302,9 @@ canvas{
 <div class="ov" id="rewardAdScreen" style="z-index:450;pointer-events:auto;">
   <div class="ov-bg" style="pointer-events:none;background:rgba(0,0,0,.97);"></div>
   <div class="ad-box" style="pointer-events:auto;position:relative;z-index:2;max-width:340px;width:94%;text-align:center;">
-    <div style="font-size:22px;margin-bottom:8px;">💀 Fallen in Battle</div>
+    <div style="font-size:22px;margin-bottom:8px;color:#f0d9a0;">💀 Fallen in Battle</div>
     <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px;">Revive with 50% HP</div>
+    <div class="bf-follow card" data-where="revive" data-card="1"></div>
     <!-- Rewarded-ad unit removed 2026-09-29 — same AdSense policy as above.
          The revive timer below is unaffected and still gates the revive. -->
     <div id="rewardAdTmr" style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px;letter-spacing:.1em;"></div>
@@ -1364,6 +1376,7 @@ canvas{
       <button class="rbtn sec" onclick="shareScore()">📤 Share Score</button>
       <button class="rbtn sec" onclick="goMenu()">Main Menu</button>
     </div>
+    <div class="bf-follow" data-where="gameover" style="margin-top:16px;"></div>
   </div>
 </div>
 
@@ -1377,6 +1390,7 @@ canvas{
       <button class="rbtn pri" onclick="nextLevel()">Journey Onward</button>
       <button class="rbtn sec" onclick="goMenu()">Rest at Menu</button>
     </div>
+    <div class="bf-follow" data-where="stage" id="bfStage" style="margin-top:16px;"></div>
   </div>
 </div>
 
@@ -2373,7 +2387,9 @@ function checkHit(move){
   if(hit){
     combo++;comboT=130;
     maxCombo=Math.max(maxCombo,combo);_checkAch('bestCombo',combo);
-    P.focus=Math.min(P.maxFocus,P.focus+3*sprLvl);
+    // 1+3*sprLvl: 4 per hit at Spirit 1 (was 3, ~34 hits to fill, now ~25).
+    // Each Spirit level still adds 3, so maxed players barely change.
+    P.focus=Math.min(P.maxFocus,P.focus+1+3*sprLvl);
   }
   updateHUD();
 
@@ -3255,7 +3271,7 @@ function update(){
     gState='lvlcmp';
     document.getElementById('lcTitle').textContent=lvl%10===0?'BOSS VANQUISHED':'ENEMIES VANQUISHED';
     document.getElementById('lcStats').textContent=`Stage ${lvl} · ${lvlCoins} Coins · Best Combo ×${maxCombo}`;
-    document.getElementById('lcScreen').classList.add('active');sfx.lvl();
+    document.getElementById('lcScreen').classList.add('active');_bfOnStageClear();sfx.lvl();
   }
   if(P.hp<=0&&gState==='playing'){
     _devApplyGodMode();if(_devGodMode)return;
@@ -3443,6 +3459,11 @@ function _separateEnemies(){
 
 function updateBoss(e,cfg){
   _updateBossBar(e);
+  // The boss never counted this down, and its contact check never read it, so
+  // a parry repeated on every frame the two overlapped (8 in one window: eight
+  // PARRY! floats, +38 combo, the boss flipping direction each frame) and the
+  // reach parry, which sets atkCD=115, never worked on that boss again.
+  if(e.atkCD>0)e.atkCD--;
   patrolStep(e);
   if(e.hp<e.maxHp*.5&&e.phase===1){e.phase=2;e.vx*=1.6;sfx.special();shake(22);spawnP(e.x+e.w/2,e.y+e.h/2,'#8b0000',35);}
   e.shotT--;
@@ -3454,9 +3475,9 @@ function updateBoss(e,cfg){
     if(e.phase===2){[-0.35,0.35].forEach(da=>projs.push({x:e.x+e.w/2,y:e.y+e.h/3,vx:Math.cos(ang+da)*sp,vy:Math.sin(ang+da)*sp,done:false}));}
   }
   const _sameFootingB=P.gnd&&Math.abs((e.y+e.h)-(P.y+P.h))<40;
-  if(_sameFootingB&&riHit(P,e,.28,.40)){
-    if(P.parry){sfx.parry();_pStop=PARRY_STOP;e.face*=-1;shake(9);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',24);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=5;comboT=180;updateHUD();grantPunish(P.x+P.w/2,P.y);}
-    else if(!P.dash&&P.inv<=0){P.hp-=modDmg(cfg.dmg*2.2);shake(20);sfx.hit();updateHUD();P.vx=P.x<e.x?-15:15;P.vy=-9;addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg*2.2)),'#ff0000');}
+  if(_sameFootingB&&riHit(P,e,.28,.40)&&!(e.atkCD>0)){
+    if(P.parry){e.atkCD=60;P.vx=P.x<e.x?-7:7;sfx.parry();_pStop=PARRY_STOP;e.face*=-1;shake(9);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',24);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=5;comboT=180;updateHUD();grantPunish(P.x+P.w/2,P.y);}
+    else if(!P.dash&&P.inv<=0){e.atkCD=50;P.hp-=modDmg(cfg.dmg*2.2);shake(20);sfx.hit();updateHUD();P.vx=P.x<e.x?-15:15;P.vy=-9;addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg*2.2)),'#ff0000');}
   }
 }
 
@@ -7126,6 +7147,50 @@ async function copyReferralLink(){
   }catch(e){notif('Link: '+link);}
 }
 window.copyReferralLink=copyReferralLink;
+
+// ════════════════════════════════════════════════════
+// BILLFITI STUDIOS — house promotion
+// ════════════════════════════════════════════════════
+// Until a real ad network is approved, the spots where an ad would sit
+// promote the studio's own channels instead. Fill in a URL to switch that
+// platform on; any left blank are simply not shown, and if every one is
+// blank the whole promotion stays hidden.
+//
+// Portal builds (CrazyGames, Poki) forbid outbound links, so a rebuild for
+// a portal must strip these along with the other external links.
+const BILLFITI={
+  name:'Billfiti Studios',
+  pitch:'New stages, boss reveals and how the game gets made.',
+  links:[
+    {k:'tiktok',    label:'TikTok',    url:''},
+    {k:'instagram', label:'Instagram', url:''},
+    {k:'youtube',   label:'YouTube',   url:''},
+    {k:'discord',   label:'Discord',   url:''}
+  ]
+};
+function _bfRender(){
+  const live=BILLFITI.links.filter(l=>l.url);
+  document.querySelectorAll('.bf-follow').forEach(el=>{
+    if(!live.length||(typeof CRAZYGAMES_BUILD!=='undefined'&&CRAZYGAMES_BUILD)){el.classList.remove('on');el.innerHTML='';return;}
+    const where=el.dataset.where||'';
+    const links=live.map(l=>'<a href="'+l.url+'" target="_blank" rel="noopener" data-k="'+l.k+'">'+l.label+'</a>').join('');
+    el.innerHTML=el.dataset.card
+      ?'<div class="bf-name">'+BILLFITI.name+'</div><div class="bf-sub">'+BILLFITI.pitch+' Follow while you wait.</div><div class="bf-links">'+links+'</div>'
+      :'<div class="bf-lbl">Follow '+BILLFITI.name+'</div><div class="bf-links">'+links+'</div>';
+    el.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{
+      _count('social',{k:a.dataset.k});
+      _count('social_at',{k:where});
+    }));
+    if(el.id!=='bfStage')el.classList.add('on');
+  });
+}
+// The stage-complete screen is seen dozens of times a session, so the row
+// only appears there on every fifth stage.
+function _bfOnStageClear(){
+  const el=document.getElementById('bfStage');
+  if(el&&el.innerHTML)el.classList.toggle('on',lvl%5===0);
+}
+_bfRender();
 
 // ════════════════════════════════════════════════════
 // 12. INTERACTIVE TUTORIAL

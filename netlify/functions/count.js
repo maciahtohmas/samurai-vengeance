@@ -88,6 +88,9 @@ const ENTERS = new Set(['play', 'tap', 'accept', 'decline']);
 // Interactive tutorial: shown, each step completed, finished, skipped, and
 // replayed from the menu. Where 'shown' and 'move' diverge is the first wall.
 const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'dash', 'clear', 'done', 'skip', 'replay']);
+// Billfiti Studios follow buttons: which platform, and which screen.
+const SOCIALS = new Set(['tiktok', 'instagram', 'youtube', 'discord', 'x', 'bluesky']);
+const SOCIAL_AT = new Set(['menu', 'revive', 'gameover', 'stage']);
 const SRCS   = new Set(['reddit', 'hn', 'google', 'search', 'itch', 'youtube',
                         'tiktok', 'social', 'discord', 'portal', 'internal',
                         'direct', 'other']);
@@ -121,6 +124,14 @@ function fieldFor(body) {
   if (e === 'enter') {
     const k = String(body.k || '');
     return ENTERS.has(k) ? 'enter_' + k : null;
+  }
+  if (e === 'social') {
+    const k = String(body.k || '');
+    return SOCIALS.has(k) ? 'soc_' + k : null;
+  }
+  if (e === 'social_at') {
+    const k = String(body.k || '');
+    return SOCIAL_AT.has(k) ? 'soc_at_' + k : null;
   }
   if (e === 'tut') {
     const k = String(body.k || '');
@@ -243,12 +254,22 @@ function renderReport(days) {
       <table class="funnel"><tbody>${TUT_ROWS.map(([l, k]) => row(l, g('tut_' + k), tShown)).join('')}</tbody></table>
       <p class="note">${g('tut_skip')} skipped it. ${g('tut_replay')} replayed it from the menu.</p>` : '';
 
+    const SOC_LABEL = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube',
+      discord: 'Discord', x: 'X', bluesky: 'Bluesky' };
+    const AT_LABEL = { menu: 'menu', revive: 'revive screen', gameover: 'game over', stage: 'stage clear' };
+    const socs = Object.keys(SOC_LABEL).map(k => ({ k, n: g('soc_' + k) })).filter(x => x.n);
+    const ats = Object.keys(AT_LABEL).map(k => ({ k, n: g('soc_at_' + k) })).filter(x => x.n);
+    const socBlock = socs.length ? `<h3>Follow clicks</h3>
+      <table class="walls"><tbody>${socs.map(x => `<tr><th>${esc(SOC_LABEL[x.k])}</th><td class="n">${x.n}</td></tr>`).join('')}</tbody></table>
+      <p class="note">From: ${ats.map(x => `${esc(AT_LABEL[x.k])} ${x.n}`).join(', ')}</p>` : '';
+
     return `<section>
       <h2>${esc(d.id)}</h2>
       ${arrived ? `<table class="funnel">${funnel}</table>` : '<p class="empty">No traffic recorded.</p>'}
       ${diffs ? `<ul class="diffs">${diffs}</ul>` : ''}
       ${enterBlock}
       ${tutBlock}
+      ${socBlock}
       ${srcBlock}
       ${retBlock}
       ${wallRows ? `<h3>Where runs ended</h3>
