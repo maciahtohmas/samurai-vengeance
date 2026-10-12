@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>One error stopped my game loop for good</title>
+<meta name="description" content="If anything inside your requestAnimationFrame loop throws, the next frame is never requested and the game freezes with no error on screen. Two real cases from my game, an addColorStop offset and a missing skin, and the fix.">
+<link rel="canonical" href="https://samuraivengeance.com/devlog-game-loop-freeze">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="One error stopped my game loop for good">
+<meta property="og:description" content="A canvas gradient stop and a missing table entry each froze my browser game solid. Why one exception kills a requestAnimationFrame loop, and how to make it survive.">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2026-10-12">
+<meta property="og:url" content="https://samuraivengeance.com/devlog-game-loop-freeze">
+<meta property="og:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="theme-color" content="#0a0008">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "TechArticle", "headline": "One error stopped my game loop for good", "description": "If anything inside your requestAnimationFrame loop throws, the next frame is never requested and the game freezes with no error on screen. Two real cases from my game, an addColorStop offset and a missing skin, and the fix.", "datePublished": "2026-10-12", "author": {"@type": "Organization", "name": "Billfiti Studios"}, "publisher": {"@type": "Organization", "name": "Billfiti Studios"}, "mainEntityOfPage": "https://samuraivengeance.com/devlog-game-loop-freeze"}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--gold:#c9952a;--gold-lt:#fbbf24;--ink:#0a0008;--txt:rgba(236,214,168,.82);--dim:rgba(236,214,168,.52)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--ink);color:var(--txt);font-family:Georgia,'Times New Roman',serif;
+       line-height:1.7;font-size:16px;
+       background-image:radial-gradient(ellipse at 50% -10%,rgba(120,20,30,.22),transparent 60%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  header{border-bottom:1px solid rgba(201,149,42,.22);padding-bottom:18px;margin-bottom:30px}
+  .brand{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+         text-decoration:none;display:inline-block;margin-bottom:14px}
+  .brand:hover{color:var(--gold-lt)}
+  h1{font-size:clamp(24px,5.6vw,33px);color:#f0d9a0;line-height:1.24;margin-bottom:12px;font-weight:700}
+  .meta{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  h2{font-size:clamp(18px,4.2vw,21px);color:var(--gold-lt);margin:36px 0 10px;font-weight:700}
+  p{margin-bottom:14px}
+  ul,ol{margin:0 0 16px 22px}
+  li{margin-bottom:7px}
+  a{color:var(--gold-lt)}
+  strong{color:#e8d9b0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;
+       background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;color:#f0d9a0}
+  pre{background:rgba(255,255,255,.04);border:1px solid rgba(201,149,42,.16);border-radius:4px;
+      padding:14px 16px;margin:4px 0 20px;overflow-x:auto;line-height:1.55}
+  pre code{background:none;padding:0;font-size:13.5px;color:var(--txt)}
+  table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  th{color:var(--gold);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:400}
+  td:first-child{color:#e8d9b0;white-space:nowrap}
+  blockquote{border-left:2px solid rgba(201,149,42,.4);padding-left:16px;margin:0 0 16px;
+             color:var(--dim);font-style:italic}
+  .play{display:inline-block;margin:30px 0 8px;padding:13px 26px;
+        background:linear-gradient(135deg,#7c4a00,#c9952a);color:#150c02;text-decoration:none;
+        border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid rgba(201,149,42,.18);
+         font-size:13px;color:var(--dim)}
+  footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
+</style>
+<!--sitenav-css-->
+<style>
+  .sitenav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(10,0,8,.94);
+    border-bottom:1px solid rgba(201,149,42,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .sitenav-in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  .sitenav-home{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9952a;text-decoration:none;white-space:nowrap}
+  .sitenav-home:hover{color:#fbbf24}
+  .sitenav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 auto;min-width:0;order:2}
+  .sitenav-links::-webkit-scrollbar{display:none}
+  .sitenav-links a{font-size:14px;color:rgba(236,214,168,.78);text-decoration:none;padding:7px 10px;border-radius:3px;white-space:nowrap}
+  .sitenav-links a:hover{color:#fbbf24;background:rgba(201,149,42,.08)}
+  .sitenav-links a[aria-current="page"]{color:#fbbf24;background:rgba(201,149,42,.14)}
+  .sitenav-play{order:3;margin-left:auto;display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#7c4a00,#c9952a);
+    color:#150c02;text-decoration:none;border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;white-space:nowrap}
+  .sitenav-play:hover{filter:brightness(1.12)}
+  .sitenav a:focus-visible{outline:2px solid #fbbf24;outline-offset:2px}
+  @media (max-width:640px){
+    .sitenav-in{padding:8px 16px}
+    .sitenav-play{order:2}
+    .sitenav-links{order:3;flex-basis:100%;margin:0 -6px}
+  }
+</style>
+<!--/sitenav-css-->
+</head>
+<body>
+<!--sitenav-->
+<nav class="sitenav" aria-label="Site"><div class="sitenav-in"><a class="sitenav-home" href="/">&#9876; Samurai Vengeance</a><div class="sitenav-links"><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemies</a><a href="/how-to-play">How to Play</a><a href="/devlog" aria-current="page">Dev Notes</a><a href="/about">About</a></div><a class="sitenav-play" href="/">&#9654; Play</a></div></nav>
+<!--/sitenav-->
+<div class="wrap">
+<header>
+  <a class="brand" href="/devlog">&larr; All dev notes</a>
+  <h1>One error stopped my game loop for good</h1>
+  <p class="meta">12 October 2026</p>
+</header>
+
+<p>I've found two bugs in my game that froze it solid, with no error on screen and no way back except reloading the page. Both came down to one line of drawing code throwing an exception. The first could freeze the game at the end of the first boss fight. The second would only ever have hit people who had paid me money.</p>
+
+<p>If you write a browser game with a hand-rolled <code>requestAnimationFrame</code> loop, you can have this bug right now and not know it.</p>
+
+<h2>Why one error stops everything</h2>
+
+<p>The usual game loop looks like this:</p>
+
+<pre><code>function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}</code></pre>
+
+<p>The loop only keeps going because each frame asks for the next one on its last line. If anything above that line throws, the function exits early and the next frame is never requested. Nothing restarts it. The canvas keeps showing the last thing it drew, so it looks like the game hung, but the page is actually fine. The game just stopped asking to run.</p>
+
+<p>The browser logs the error to the console, which players never open. From their side the game simply stops.</p>
+
+<h2>Bug one: the boss fight you couldn't finish</h2>
+
+<p>Stage 10 is the first boss, and it could lock the game up for good right as you were winning. That's about the most annoying place a game can freeze.</p>
+
+<p>The boss has a health bar drawn with a canvas gradient. The red part ends wherever the boss's health is, so the code worked out the boss's remaining health as a fraction and used it as a gradient stop:</p>
+
+<pre><code>const pct = boss.hp / boss.maxHp;
+grad.addColorStop(pct, 'rgba(0,0,0,0)');</code></pre>
+
+<p>The Ki special is a big screen-clearing attack that does a fixed 580 damage at the starting upgrade level. It's the obvious thing to save for finishing a boss. If the boss had 100 health left and took 580, its health went to minus 480, and <code>pct</code> came out negative.</p>
+
+<p><code>addColorStop</code> only accepts offsets from 0 to 1. Pass it anything else and it doesn't clamp or ignore it. It throws an <code>IndexSizeError</code>. The throw escaped the loop, no next frame was requested, and the game froze with the boss beaten and the win screen never coming.</p>
+
+<h2>Bug two: the freeze only paying customers would get</h2>
+
+<p>This one I'm less proud of. The game sells a 99 cent starter bundle that includes a bronze sword skin. When the game loaded for someone who owned it, it set their style to <code>'bronze'</code>.</p>
+
+<p>Skins were defined in two tables, one listing the skins you can own and one holding the colours the renderer uses for the kimono and blade. Both are looked up with the same key. Bronze had been added to the first table and never to the second. So every frame, the renderer did this:</p>
+
+<pre><code>const s = STYLES[styleKey];   // undefined for 'bronze'
+ctx.fillStyle = s.blade;      // TypeError</code></pre>
+
+<p>That's the same failure as the boss bar. A throw inside the draw call, no next frame, a frozen screen. Free players could never see it because they never had the bronze skin. Every single person who bought the bundle would have. Nobody had bought it yet when I found it, which is the only reason this is a funny story and not a refund queue.</p>
+
+<h2>The fix, in two layers</h2>
+
+<p>The first layer is fixing the actual bugs. The health fraction is clamped before it goes anywhere near the gradient:</p>
+
+<pre><code>const pct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));</code></pre>
+
+<p>And the bronze colours went into the table they were missing from. I added the one other skin that had the same gap while I was there, even though nothing can select it yet.</p>
+
+<p>The second layer is the one I'd recommend to anyone. Make the loop survive its own errors:</p>
+
+<pre><code>function loop(ts){
+  try { draw(); }   catch (err) { console.error(err); }
+  try { update(); } catch (err) { console.error(err); }
+  requestAnimationFrame(loop);
+}</code></pre>
+
+<p>Now a bad frame is one bad frame. The error still gets logged so you can find it, but the next frame still gets requested and the game keeps running. A glitched health bar for one frame is a bug report. A frozen game is a player who closes the tab and doesn't come back.</p>
+
+<p>Putting draw and update in separate <code>try</code> blocks matters. If they share one, a draw error also skips the update, so the simulation silently stalls even though frames keep coming.</p>
+
+<h2>Is this hiding bugs?</h2>
+
+<p>A bit, and I went back and forth on it. The argument against is that swallowing errors lets broken code keep running in a broken state. In a game I think that's the right trade. The alternative isn't the player seeing a helpful error, it's the player staring at a still image until they give up. And the errors still go to the console.</p>
+
+<p>What I'd change is that I should have been watching for them. If you have any kind of analytics, send a count of caught loop errors along with it. A sudden jump in that number is a bug report that arrives before anyone has to write one.</p>
+
+<h2>Check your own game</h2>
+
+<p>Search your code for <code>addColorStop</code>, <code>createRadialGradient</code> and <code>arc</code>. Wherever the argument is calculated from game state, especially health or progress, ask what happens when that value goes negative or past its maximum. Then wrap the loop body. It takes two minutes, and it's the difference between a glitch and a game that just stops.</p>
+
+<a class="play" href="/">Play Samurai Vengeance</a>
+<footer><a href="/">Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemy Guide</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+</div>
+</body>
+</html>

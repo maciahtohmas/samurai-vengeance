@@ -77,6 +77,24 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/enemy-guide.html"
+  to = "/enemy-guide"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/devlog-game-loop-freeze.html"
+  to = "/devlog-game-loop-freeze"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/devlog-small-bugs.html"
+  to = "/devlog-small-bugs"
+  status = 301
+  force = true
+
 # index.html is the game itself; send it to the bare root for the same reason.
 [[redirects]]
   from = "/index.html"

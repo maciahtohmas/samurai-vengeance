@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Samurai Vengeance Boss Guide — All 10 Bosses, Phase II and How to Win</title>
+<title>Samurai Vengeance Boss Guide: All 10 Bosses, Phase II and How to Win</title>
 <meta name="description" content="Every boss in Samurai Vengeance, which stages they guard, how much HP they have, what changes at Phase II, and the parry, dash and Ki timings that beat them. Numbers taken from the game code.">
 <link rel="canonical" href="https://samuraivengeance.com/boss-guide">
 <meta property="og:site_name" content="Samurai Vengeance">
-<meta property="og:title" content="Samurai Vengeance Boss Guide — All 10 Bosses, Phase II and How to Win">
+<meta property="og:title" content="Samurai Vengeance Boss Guide: All 10 Bosses, Phase II and How to Win">
 <meta property="og:description" content="Every boss in Samurai Vengeance, which stages they guard, how much HP they have, what changes at Phase II, and the parry, dash and Ki timings that beat them. Numbers taken from the game code.">
 <meta property="og:type" content="article">
 <meta property="og:url" content="https://samuraivengeance.com/boss-guide">
@@ -52,11 +52,36 @@
   .note{font-size:13px;color:var(--dim);font-style:italic}
   @media (max-width:520px){table{font-size:14px}th,td{padding:7px 6px}td:first-child{white-space:normal;padding-right:8px}}
 </style>
+<!--sitenav-css-->
+<style>
+  .sitenav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(10,0,8,.94);
+    border-bottom:1px solid rgba(201,149,42,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .sitenav-in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  .sitenav-home{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9952a;text-decoration:none;white-space:nowrap}
+  .sitenav-home:hover{color:#fbbf24}
+  .sitenav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 auto;min-width:0;order:2}
+  .sitenav-links::-webkit-scrollbar{display:none}
+  .sitenav-links a{font-size:14px;color:rgba(236,214,168,.78);text-decoration:none;padding:7px 10px;border-radius:3px;white-space:nowrap}
+  .sitenav-links a:hover{color:#fbbf24;background:rgba(201,149,42,.08)}
+  .sitenav-links a[aria-current="page"]{color:#fbbf24;background:rgba(201,149,42,.14)}
+  .sitenav-play{order:3;margin-left:auto;display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#7c4a00,#c9952a);
+    color:#150c02;text-decoration:none;border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;white-space:nowrap}
+  .sitenav-play:hover{filter:brightness(1.12)}
+  .sitenav a:focus-visible{outline:2px solid #fbbf24;outline-offset:2px}
+  @media (max-width:640px){
+    .sitenav-in{padding:8px 16px}
+    .sitenav-play{order:2}
+    .sitenav-links{order:3;flex-basis:100%;margin:0 -6px}
+  }
+</style>
+<!--/sitenav-css-->
 </head>
 <body>
+<!--sitenav-->
+<nav class="sitenav" aria-label="Site"><div class="sitenav-in"><a class="sitenav-home" href="/">&#9876; Samurai Vengeance</a><div class="sitenav-links"><a href="/boss-guide" aria-current="page">Boss Guide</a><a href="/enemy-guide">Enemies</a><a href="/how-to-play">How to Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a></div><a class="sitenav-play" href="/">&#9654; Play</a></div></nav>
+<!--/sitenav-->
 <div class="wrap">
 <header>
-  <a class="brand" href="/">&#9876; Samurai Vengeance</a>
   <h1>Boss guide</h1>
   <p class="lede">All ten bosses, where they appear, how much health they carry, and exactly what changes when they hit Phase II. Every number on this page comes straight from the game's source code, not from guesswork.</p>
 </header>
@@ -108,7 +133,7 @@
 <p>The contact damage has one big gap: it only counts when you and the boss are both standing on the ground at the same height. <strong>If you are in the air, the boss's body cannot hurt you.</strong> Jumping over a boss as it walks toward you is completely safe, and landing behind it gives you free hits on its back while it walks away.</p>
 
 <h2>Phase II</h2>
-<p>When a boss drops below half its health, the screen shakes, the name bar gains <em>&mdash; PHASE II</em> and three things change at once:</p>
+<p>When a boss drops below half its health, the screen shakes, the words <em>PHASE II</em> appear next to its name, and three things change at once:</p>
 <ul>
 <li>It moves <strong>60% faster</strong>.</li>
 <li>It shoots almost <strong>twice as often</strong>, about every 0.6 seconds instead of every 1.1.</li>
@@ -182,10 +207,10 @@
 <li><strong>Dash</strong> lengthens the invincibility window, which helps most once Phase II gets fast.</li>
 </ul>
 
-<p>Controls and the regular enemies are covered in <a href="/how-to-play">How to Play</a>. For how the game is built, including why it once ran at double speed on 120Hz phones, see the <a href="/devlog">Dev Notes</a>.</p>
+<p>Controls are covered in <a href="/how-to-play">How to Play</a>, and the regular enemies in the <a href="/enemy-guide">Enemy Guide</a>. For how the game is built, including why it once ran at double speed on 120Hz phones, see the <a href="/devlog">Dev Notes</a>.</p>
 
 <a class="play" href="/">Play the game</a>
-<footer><a href="/">Play</a><a href="/how-to-play">How to Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+<footer><a href="/">Play</a><a href="/how-to-play">How to Play</a><a href="/enemy-guide">Enemy Guide</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
 </div>
 </body>
 </html>

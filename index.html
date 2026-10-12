@@ -663,6 +663,7 @@ canvas{
         <a href="/about" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">About</a>
         <a href="/how-to-play" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">How to Play</a>
         <a href="/boss-guide" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Boss Guide</a>
+        <a href="/enemy-guide" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Enemy Guide</a>
         <a href="/devlog" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Dev Notes</a>
         <a href="/privacy" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Privacy</a>
         <a href="/terms" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Terms</a>
@@ -819,8 +820,12 @@ canvas{
     <button class="pclose" onclick="closeP('settingsP')">×</button>
     <h2>Settings</h2>
     <div class="set-row">
-      <div><div class="set-lbl">Sound Effects</div><div class="set-sub">All game audio</div></div>
+      <div><div class="set-lbl">Sound Effects</div><div class="set-sub">Slashes, hits and parries</div></div>
       <div class="tog on" id="togSfx" onclick="togSet('sfx')"></div>
+    </div>
+    <div class="set-row">
+      <div><div class="set-lbl">Music</div><div class="set-sub">Koto, flute and taiko</div></div>
+      <div class="tog on" id="togMusic" onclick="togSet('music')"></div>
     </div>
     <div class="set-row">
       <div><div class="set-lbl">Volume</div></div>
@@ -1596,9 +1601,12 @@ if(window.visualViewport)window.visualViewport.addEventListener('resize',_schedu
 // AUDIO ENGINE
 // ═══════════════════════════════════════════════════════
 let AC;
-function getAC(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
-function tone(f,t,d,v,a,dc){try{const c=getAC(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.type=t||'sine';o.frequency.setValueAtTime(f,c.currentTime);g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(v||.3,c.currentTime+(a||.01));g.gain.exponentialRampToValueAtTime(.001,c.currentTime+(d||.2)+(dc||.05));o.start();o.stop(c.currentTime+(d||.2)+(dc||.05)+.05);}catch(e){}}
-function noise(dur,vol,freq){try{const c=getAC(),buf=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=freq||1200;src.buffer=buf;src.connect(f);f.connect(g);g.connect(c.destination);g.gain.setValueAtTime(vol||.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);src.start();src.stop(c.currentTime+dur);}catch(e){}}
+let SFXG;
+// Every sound effect goes through one gain node so the Volume slider in
+// Settings has something to control. It used to save a number nobody read.
+function getAC(){if(!AC){AC=new(window.AudioContext||window.webkitAudioContext)();SFXG=AC.createGain();SFXG.gain.value=(typeof CFG!=='undefined'?CFG.vol:70)/100;SFXG.connect(AC.destination);}return AC;}
+function tone(f,t,d,v,a,dc){try{const c=getAC(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(SFXG);o.type=t||'sine';o.frequency.setValueAtTime(f,c.currentTime);g.gain.setValueAtTime(0,c.currentTime);g.gain.linearRampToValueAtTime(v||.3,c.currentTime+(a||.01));g.gain.exponentialRampToValueAtTime(.001,c.currentTime+(d||.2)+(dc||.05));o.start();o.stop(c.currentTime+(d||.2)+(dc||.05)+.05);}catch(e){}}
+function noise(dur,vol,freq){try{const c=getAC(),buf=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;const src=c.createBufferSource(),g=c.createGain(),f=c.createBiquadFilter();f.type='lowpass';f.frequency.value=freq||1200;src.buffer=buf;src.connect(f);f.connect(g);g.connect(SFXG);g.gain.setValueAtTime(vol||.15,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dur);src.start();src.stop(c.currentTime+dur);}catch(e){}}
 const sfx={
   slash:()=>{tone(260,'sawtooth',.07,.32,.003);tone(520,'sawtooth',.05,.15,.003);noise(.06,.1,2000);},
   hit:()=>{tone(130,'square',.1,.42,.003);tone(70,'sawtooth',.09,.25,.003);noise(.09,.14,800);},
@@ -1613,6 +1621,212 @@ const sfx={
   rain:()=>{noise(.05,.03,800);},
   thunder:()=>{noise(.4,.35,200);tone(60,'sawtooth',.15,.2,.002);}
 };
+
+// ═══════════════════════════════════════════════════════
+// MUSIC ENGINE — generated live with Web Audio, no audio files.
+// Every track is written in the miyako-bushi scale (D Eb G A Bb), the
+// five-note scale behind most koto and shamisen music, so it sounds
+// Japanese without any samples. A lookahead scheduler queues notes ~150ms
+// ahead on the audio clock, which keeps timing tight even when the game
+// loop hitches.
+// ═══════════════════════════════════════════════════════
+const SVMusic=(()=>{
+  let ctx=null,master=null,bus=null,verb=null,noiseBuf=null;
+  let cur=null,curName=null,step=0,nextT=0,timer=null,intensity=0,vol=.7,switchT=null;
+  const ROOT=146.83;                 // D3
+  const SCALE=[0,1,5,7,8];           // miyako-bushi
+  // Scale degree -> Hz. Degrees run past 4 into higher octaves, below 0 into lower.
+  const hz=(deg,oct=0)=>{const o=Math.floor(deg/5),d=((deg%5)+5)%5;return ROOT*Math.pow(2,oct+o+SCALE[d]/12);};
+
+  function init(ac){
+    if(ctx)return;
+    ctx=ac;
+    master=ctx.createGain();master.gain.value=0;master.connect(ctx.destination);
+    // A gentle compressor glues drums and strings together and stops a
+    // loud taiko hit from clipping.
+    bus=ctx.createDynamicsCompressor();bus.threshold.value=-18;bus.ratio.value=3;bus.connect(master);
+    verb=ctx.createConvolver();verb.buffer=impulse(2.8);
+    const vg=ctx.createGain();vg.gain.value=.32;verb.connect(vg);vg.connect(bus);
+    noiseBuf=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate);
+    const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  }
+  // Synthetic hall: decaying stereo noise is enough for a convincing room.
+  function impulse(sec){
+    const r=ctx.sampleRate,n=Math.floor(r*sec),b=ctx.createBuffer(2,n,r);
+    for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3.2);}
+    return b;
+  }
+  function out(node,wet){
+    node.connect(bus);
+    if(wet){const g=ctx.createGain();g.gain.value=wet;node.connect(g);g.connect(verb);}
+  }
+
+  // ── Instruments ─────────────────────────────────────
+  // Koto: bright pluck whose filter closes fast, like a plucked silk string.
+  function koto(t,f,v,len=1.6){
+    const o=ctx.createOscillator(),o2=ctx.createOscillator(),h=ctx.createGain(),lp=ctx.createBiquadFilter(),g=ctx.createGain();
+    o.type='triangle';o.frequency.setValueAtTime(f*1.012,t);o.frequency.exponentialRampToValueAtTime(f,t+.05);
+    o2.type='sine';o2.frequency.value=f*2.003;h.gain.value=.3;
+    lp.type='lowpass';lp.Q.value=2;lp.frequency.setValueAtTime(Math.min(f*9,9000),t);lp.frequency.exponentialRampToValueAtTime(f*1.4,t+len*.5);
+    o.connect(lp);o2.connect(h);h.connect(lp);lp.connect(g);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.004);g.gain.exponentialRampToValueAtTime(.0001,t+len);
+    out(g,.45);o.start(t);o2.start(t);o.stop(t+len+.05);o2.stop(t+len+.05);
+  }
+  // Shamisen: harsher, shorter, with the buzzy "sawari" edge from a square wave.
+  function shamisen(t,f,v){
+    const o=ctx.createOscillator(),bp=ctx.createBiquadFilter(),g=ctx.createGain();
+    o.type='square';o.frequency.value=f;
+    bp.type='bandpass';bp.Q.value=1.4;bp.frequency.setValueAtTime(f*4,t);bp.frequency.exponentialRampToValueAtTime(f*1.5,t+.25);
+    o.connect(bp);bp.connect(g);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.003);g.gain.exponentialRampToValueAtTime(.0001,t+.38);
+    out(g,.2);o.start(t);o.stop(t+.42);
+    nz(t,.025,v*.5,'highpass',4000,0);
+  }
+  // Shakuhachi: breathy flute. Slow attack, delayed vibrato, filtered breath noise.
+  function flute(t,f,dur,v){
+    const o=ctx.createOscillator(),lfo=ctx.createOscillator(),lg=ctx.createGain(),g=ctx.createGain(),lp=ctx.createBiquadFilter();
+    o.type='triangle';o.frequency.setValueAtTime(f*.97,t);o.frequency.linearRampToValueAtTime(f,t+.12);
+    lfo.frequency.value=5.2;lg.gain.setValueAtTime(0,t);lg.gain.linearRampToValueAtTime(f*.012,t+Math.min(dur*.6,.6));
+    lfo.connect(lg);lg.connect(o.frequency);
+    lp.type='lowpass';lp.frequency.value=f*3.5;o.connect(lp);lp.connect(g);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.14);
+    g.gain.setValueAtTime(v,t+Math.max(.15,dur-.15));g.gain.exponentialRampToValueAtTime(.0001,t+dur+.35);
+    out(g,.6);o.start(t);lfo.start(t);o.stop(t+dur+.4);lfo.stop(t+dur+.4);
+    // breath
+    const s=ctx.createBufferSource(),bp=ctx.createBiquadFilter(),bg=ctx.createGain();
+    s.buffer=noiseBuf;s.loop=true;bp.type='bandpass';bp.frequency.value=f*2;bp.Q.value=3;
+    bg.gain.setValueAtTime(0,t);bg.gain.linearRampToValueAtTime(v*.22,t+.06);bg.gain.exponentialRampToValueAtTime(.0001,t+dur+.2);
+    s.connect(bp);bp.connect(bg);out(bg,.4);s.start(t);s.stop(t+dur+.25);
+  }
+  // Taiko: pitched sine that drops, plus a skin slap of noise.
+  function taiko(t,v,f0=110){
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f0*.38,t+.32);
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+.7);
+    o.connect(g);out(g,.22);o.start(t);o.stop(t+.75);
+    nz(t,.07,v*.45,'lowpass',1100,.1);
+  }
+  // Shime-daiko / rim: tight high drum.
+  function shime(t,v){nz(t,.05,v,'bandpass',2600,.08);
+    const o=ctx.createOscillator(),g=ctx.createGain();o.type='triangle';o.frequency.setValueAtTime(420,t);o.frequency.exponentialRampToValueAtTime(260,t+.05);
+    g.gain.setValueAtTime(v*.5,t);g.gain.exponentialRampToValueAtTime(.0001,t+.08);o.connect(g);out(g,0);o.start(t);o.stop(t+.1);}
+  function nz(t,d,v,type,fq,wet){
+    const s=ctx.createBufferSource(),f=ctx.createBiquadFilter(),g=ctx.createGain();
+    s.buffer=noiseBuf;f.type=type;f.frequency.value=fq;
+    g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+    s.connect(f);f.connect(g);out(g,wet);s.start(t,Math.random()*.5);s.stop(t+d+.02);
+  }
+  // Pad: low drone under everything. Re-triggered each bar with overlap so
+  // there are no long-lived nodes to clean up when a track changes.
+  function pad(t,freqs,dur,v){
+    freqs.forEach((f,i)=>{
+      [-4,4].forEach(cents=>{
+        const o=ctx.createOscillator(),lp=ctx.createBiquadFilter(),g=ctx.createGain();
+        o.type='sawtooth';o.frequency.value=f;o.detune.value=cents+i;
+        lp.type='lowpass';lp.frequency.value=380;
+        o.connect(lp);lp.connect(g);
+        g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+dur*.35);
+        g.gain.setValueAtTime(v,t+dur*.7);g.gain.linearRampToValueAtTime(0,t+dur+.6);
+        out(g,.5);o.start(t);o.stop(t+dur+.7);
+      });
+    });
+  }
+
+  // ── Tracks ───────────────────────────────────────────
+  // Each track gets called once per 16th note with the step index, the
+  // audio time it lands on, and the length of a 16th in seconds.
+  const rnd=Math.random;
+  const pick=a=>a[Math.floor(rnd()*a.length)];
+  // Melody that wanders up and down the scale instead of jumping randomly,
+  // which is what makes it sound like a phrase rather than noise.
+  function walker(lo,hi,start){
+    let d=start;
+    return ()=>{d+=pick([-2,-1,-1,1,1,2,0]);if(d<lo)d=lo+1;if(d>hi)d=hi-1;return d;};
+  }
+
+  const TRACKS={
+    // Main menu: slow, sparse, moonlit.
+    dojo:{bpm:64,title:'Moonlit Dojo',
+      init(){this.mel=walker(5,13,9);this.prog=[0,-2,3,-1];},
+      step(s,t,q){
+        const bar=Math.floor(s/16),b=s%16,root=this.prog[bar%4];
+        if(b===0)pad(t,[hz(root,-1)*.5,hz(root+3,-1)*.5],q*16,.035);
+        if([0,3,6,10].includes(b))koto(t,hz(root+[0,2,4,3][[0,3,6,10].indexOf(b)]),.16,2.2);
+        if(b===13&&rnd()<.5)koto(t,hz(root+5),.09,2);
+        if(bar%4>=2&&(b===0||(b===8&&rnd()<.6)))flute(t,hz(this.mel(),0),q*(b===0?7:6),.11);
+      }},
+    // Regular stages: driving taiko and a koto ostinato.
+    blade:{bpm:104,title:'Path of the Blade',
+      init(){this.mel=walker(5,12,7);this.prog=[0,0,3,2,0,0,-1,1];},
+      step(s,t,q){
+        const bar=Math.floor(s/16),b=s%16,root=this.prog[bar%8];
+        if(b===0)pad(t,[hz(root,-1)*.5],q*16,.03);
+        if(b===0)taiko(t,.55,95);
+        if(b===6||b===10)taiko(t,.38,120);
+        if(b===4||b===12)shime(t,.28);
+        if(b===14&&rnd()<.4)shime(t,.14);
+        if(b%2===0)koto(t,hz(root+[0,2,4,2,5,4,2,1][b/2]),.11,.9);
+        if(bar%2===1&&[0,4,8,12].includes(b)&&rnd()<.55)shamisen(t,hz(this.mel(),0),.09);
+        if(bar%8>=4&&b===0)flute(t,hz(this.mel()+2,0),q*10,.09);
+      }},
+    // Boss stages. Intensity 1 = Phase II: faster, extra drums, higher melody.
+    duel:{bpm:132,boost:1.12,title:'Crimson Duel',
+      init(){this.mel=walker(3,11,5);this.prog=[0,0,1,0,0,0,-2,-1];},
+      step(s,t,q){
+        const bar=Math.floor(s/16),b=s%16,root=this.prog[bar%8],p2=intensity>0;
+        if(b===0)pad(t,[hz(root,-1)*.5,hz(root+1,-1)*.5],q*16,.03);
+        if(b===0||b===8)taiko(t,.7,80);
+        if([3,6,11,14].includes(b))taiko(t,.4,125);
+        if(b===4||b===12)shime(t,.3);
+        if(p2&&b%2===1)shime(t,.13);
+        if(p2&&b===0&&bar%2===0)nz(t,.9,.12,'highpass',5000,.5);
+        koto(t,hz(root+[0,0,4,0,5,0,4,3,0,0,4,0,6,5,4,3][b],-1),b%4===0?.12:.07,.45);
+        if([0,6,8,12].includes(b)&&rnd()<(p2?.85:.5))shamisen(t,hz(this.mel(),p2?1:0),.08);
+      }}
+  };
+
+  // ── Transport ────────────────────────────────────────
+  function tick(){
+    if(!cur)return;
+    const q=60/(cur.bpm*(intensity&&cur.boost?cur.boost:1))/4;
+    while(nextT<ctx.currentTime+.15){cur.step(step,nextT,q);step++;nextT+=q;}
+  }
+  function start(name){
+    cur=TRACKS[name];curName=name;cur.init();step=0;nextT=ctx.currentTime+.06;
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+    master.gain.linearRampToValueAtTime(vol*.6,ctx.currentTime+1.2);
+    if(!timer)timer=setInterval(tick,25);
+    tick();
+  }
+  function play(name,ac){
+    if(!TRACKS[name])return;
+    init(ac||ctx||new(window.AudioContext||window.webkitAudioContext)());
+    if(ctx.state==='suspended')ctx.resume();
+    if(name===curName&&cur)return;
+    clearTimeout(switchT);
+    intensity=0;
+    if(cur){                                  // dip out, then swap
+      master.gain.cancelScheduledValues(ctx.currentTime);
+      master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+      master.gain.linearRampToValueAtTime(0,ctx.currentTime+.4);
+      cur=null;curName=null;
+      switchT=setTimeout(()=>start(name),420);
+    } else start(name);
+  }
+  function stop(){
+    clearTimeout(switchT);
+    if(!ctx)return;
+    master.gain.cancelScheduledValues(ctx.currentTime);
+    master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+    master.gain.linearRampToValueAtTime(0,ctx.currentTime+.6);
+    cur=null;curName=null;
+    clearInterval(timer);timer=null;
+  }
+  function setVolume(v){vol=Math.max(0,Math.min(1,v));if(ctx&&cur)master.gain.setTargetAtTime(vol*.6,ctx.currentTime,.1);}
+  function setIntensity(i){intensity=i;}
+  return {play,stop,setVolume,setIntensity,tracks:TRACKS,get playing(){return curName;},get context(){return ctx;},get output(){return master;}};
+})();
 
 // ═══════════════════════════════════════════════════════
 // STATE
@@ -5906,7 +6120,7 @@ function notif(msg){const el=document.getElementById('notif');el.textContent=msg
 // ════════════════════════════════════
 // SETTINGS
 // ════════════════════════════════════
-const CFG={sfx:true,shake:true,grain:true,blood:true,rain:true,vol:70};
+const CFG={sfx:true,music:true,shake:true,grain:true,blood:true,rain:true,vol:70};
 function loadCFG(){try{const s=JSON.parse(localStorage.getItem('sv5_cfg'));if(s)Object.assign(CFG,s);}catch(e){}}
 function saveCFG(){try{localStorage.setItem('sv5_cfg',JSON.stringify(CFG));}catch(e){}}
 function togSet(k){
@@ -5914,9 +6128,9 @@ function togSet(k){
   document.getElementById('tog'+k.charAt(0).toUpperCase()+k.slice(1)).classList.toggle('on',CFG[k]);
   saveCFG();
 }
-function setVol(v){CFG.vol=parseInt(v);saveCFG();}
+function setVol(v){CFG.vol=parseInt(v);saveCFG();if(SFXG)SFXG.gain.setTargetAtTime(CFG.vol/100,AC.currentTime,.05);_musicTick();}
 function applyCFGUI(){
-  ['Sfx','Shake','Grain','Blood','Rain'].forEach(k=>{
+  ['Sfx','Music','Shake','Grain','Blood','Rain'].forEach(k=>{
     const el=document.getElementById('tog'+k);
     if(el)el.classList.toggle('on',CFG[k.toLowerCase()]);
   });
@@ -5929,6 +6143,39 @@ function playSfx(name){if(CFG.sfx)sfx[name]&&sfx[name]();}
 function patchSfx(){
   Object.keys(sfx).forEach(k=>{const orig=sfx[k];sfx[k]=function(){if(CFG.sfx)orig();};});
 }
+
+// ════════════════════════════════════
+// MUSIC DIRECTOR
+// ════════════════════════════════════
+// Picks the track from whatever the game is doing instead of being called
+// from each of the dozen places gState changes. Menu gets Moonlit Dojo, a
+// stage gets Path of the Blade, any stage with a live boss gets Crimson Duel,
+// and the boss's Phase II switches the duel to its faster, busier form.
+// Paused ducks the music; game over and a hidden tab stop it.
+function _musicTick(){
+  try{
+    if(!CFG.music||document.hidden||gState==='gameover'){if(SVMusic.playing)SVMusic.stop();return;}
+    let want='dojo',boss=null;
+    if(gState==='playing'||gState==='bossintro'||gState==='lvlcmp'){
+      boss=enemies.find(e=>e.isBoss&&e.hp>0);
+      want=boss||gState==='bossintro'?'duel':'blade';
+    }
+    // Between stages, let whatever is playing ring out rather than flipping
+    // from the boss theme to the stage theme the instant a boss dies.
+    if(gState==='lvlcmp'&&SVMusic.playing)want=SVMusic.playing;
+    if(SVMusic.playing!==want)SVMusic.play(want,getAC());
+    SVMusic.setIntensity(boss&&boss.phase===2?1:0);
+    SVMusic.setVolume((CFG.vol/100)*(paused?.35:1));
+  }catch(e){}
+}
+setInterval(_musicTick,250);
+document.addEventListener('visibilitychange',_musicTick);
+// Browsers keep audio locked until the player touches the page, so the
+// first tap or key press is what actually lets the menu music start.
+['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,()=>{
+  try{const c=getAC();if(c.state==='suspended')c.resume();}catch(e){}
+  _musicTick();
+},{passive:true}));
 
 // ════════════════════════════════════
 // STATS

@@ -48,11 +48,36 @@
   footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
   .note{font-size:13px;color:var(--dim);font-style:italic}
 </style>
+<!--sitenav-css-->
+<style>
+  .sitenav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(10,0,8,.94);
+    border-bottom:1px solid rgba(201,149,42,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .sitenav-in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  .sitenav-home{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9952a;text-decoration:none;white-space:nowrap}
+  .sitenav-home:hover{color:#fbbf24}
+  .sitenav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 auto;min-width:0;order:2}
+  .sitenav-links::-webkit-scrollbar{display:none}
+  .sitenav-links a{font-size:14px;color:rgba(236,214,168,.78);text-decoration:none;padding:7px 10px;border-radius:3px;white-space:nowrap}
+  .sitenav-links a:hover{color:#fbbf24;background:rgba(201,149,42,.08)}
+  .sitenav-links a[aria-current="page"]{color:#fbbf24;background:rgba(201,149,42,.14)}
+  .sitenav-play{order:3;margin-left:auto;display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#7c4a00,#c9952a);
+    color:#150c02;text-decoration:none;border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;white-space:nowrap}
+  .sitenav-play:hover{filter:brightness(1.12)}
+  .sitenav a:focus-visible{outline:2px solid #fbbf24;outline-offset:2px}
+  @media (max-width:640px){
+    .sitenav-in{padding:8px 16px}
+    .sitenav-play{order:2}
+    .sitenav-links{order:3;flex-basis:100%;margin:0 -6px}
+  }
+</style>
+<!--/sitenav-css-->
 </head>
 <body>
+<!--sitenav-->
+<nav class="sitenav" aria-label="Site"><div class="sitenav-in"><a class="sitenav-home" href="/">&#9876; Samurai Vengeance</a><div class="sitenav-links"><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemies</a><a href="/how-to-play">How to Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a></div><a class="sitenav-play" href="/">&#9654; Play</a></div></nav>
+<!--/sitenav-->
 <div class="wrap">
 <header>
-  <a class="brand" href="/">&#9876; Samurai Vengeance</a>
   <h1>Terms of Service</h1>
   <p class="lede">Last updated: 29 September 2026</p>
 </header>
@@ -90,7 +115,7 @@ reproduce, distribute or reverse-engineer any part of the game.</p>
 <p><a href="mailto:contact@samuraivengeance.com">contact@samuraivengeance.com</a></p>
 
 <a class="play" href="/">Play the game</a>
-<footer><a href="/">Play</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/boss-guide">Boss Guide</a><a href="/privacy">Privacy</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+<footer><a href="/">Play</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemy Guide</a><a href="/privacy">Privacy</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
 </div>
 </body>
 </html>
