@@ -12,6 +12,14 @@
 <meta name="keywords" content="samurai game, ninja game, free browser game, action platformer, mobile game">
 <meta name="author" content="Billfiti Studios">
 <meta name="theme-color" content="#0a0008">
+<!-- Home-screen install: icon, name, and opening without the browser bars. -->
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Samurai">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="canonical" href="https://samuraivengeance.com/">
 
 <!-- Social cards. twitter:card was already summary_large_image but NO image
@@ -7474,6 +7482,12 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden)_ctFlush()
 // anything behind a strict referrer policy strip the referrer entirely. Tag
 // every link you post yourself: samuraivengeance.com/?ref=reddit
 function _srcBucket(){
+  // Opened from a home-screen icon. These launches carry no referrer and used
+  // to land in "direct", mixed in with typed URLs. An install is the clearest
+  // sign of a player who means to come back, so it gets its own bucket.
+  try{
+    if((window.matchMedia&&(matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches))||navigator.standalone===true)return 'app';
+  }catch(e){}
   const q=new URLSearchParams(location.search||'');
   const tag=(q.get('ref')||q.get('utm_source')||'').toLowerCase();
   const r=(document.referrer||'').toLowerCase();

@@ -93,7 +93,7 @@ const SOCIALS = new Set(['tiktok', 'instagram', 'youtube', 'discord', 'x', 'blue
 const SOCIAL_AT = new Set(['menu', 'revive', 'gameover', 'stage']);
 const SRCS   = new Set(['reddit', 'hn', 'google', 'search', 'itch', 'youtube',
                         'tiktok', 'social', 'discord', 'portal', 'internal',
-                        'direct', 'other']);
+                        'direct', 'other', 'app']);
 
 // Stage numbers are exact up to 100 and pooled above it. The interesting part
 // of the curve is the first couple of dozen stages; nobody needs to know that
@@ -207,7 +207,7 @@ function renderReport(days) {
       reddit:'Reddit', hn:'Hacker News', google:'Google', search:'Other search',
       itch:'itch.io', youtube:'YouTube', tiktok:'TikTok', social:'Social',
       discord:'Discord', portal:'Game portals', internal:'Another page here',
-      direct:'Direct / untagged', other:'Elsewhere',
+      direct:'Direct / untagged', other:'Elsewhere', app:'Home screen app',
     };
     const srcs = Object.keys(SRC_LABEL)
       .map(k => ({ k, n: g('s_src_' + k) }))
