@@ -2587,6 +2587,10 @@ function modDmg(v){return levelMod==='glass'?v*2:v;}
 // ═══════════════════════════════════════════════════════
 function initLevel(){
   _inDailyBossRun=false;
+  // Only nextLevel() used to hide the boss bar, so jumping from a boss stage to
+  // another stage by stage select or the menu left a dead boss's bar on screen.
+  // updateBoss() shows it again on the first frame of a real boss stage.
+  _updateBossBar(null);
   try{ const _k=_dcKey(lvl); ST.attemptsByStage[_k]=(ST.attemptsByStage[_k]||0)+1; }catch(e){}
   enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];
   slashes=[];blasts=[];bloodSplats=[];splashes=[];corpses=[];
