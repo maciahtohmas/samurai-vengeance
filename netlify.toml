@@ -59,6 +59,18 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/devlog.html"
+  to = "/devlog"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/devlog-120hz-physics-bug.html"
+  to = "/devlog-120hz-physics-bug"
+  status = 301
+  force = true
+
 # index.html is the game itself; send it to the bare root for the same reason.
 [[redirects]]
   from = "/index.html"
