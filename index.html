@@ -4187,13 +4187,11 @@ const SHEETS={
 // entirely and still gets painted art moving.
 //
 // Missing file = procedural, same as the sheets. Nothing breaks.
-// Tried in order. The folder version is tidier, but uploading a file INTO a
-// subfolder from a phone browser is awkward-to-impossible, so the repo root is
-// accepted as a fallback. Drop the PNG wherever is easiest and it is found.
-// Tried in order. The folder version is tidier, but uploading a file INTO a
-// subfolder from a phone browser is awkward-to-impossible, so the repo root is
-// accepted as a fallback. Drop the PNG wherever is easiest and it is found.
-const PARTS_SRC=['sprites/samurai-parts.png','samurai-parts.png'];
+// Tried in order. Every atlas lives at the repo root (uploading INTO a
+// subfolder from a phone browser is awkward), so the root is tried first; the
+// old sprites/ path stays as a fallback. It used to be the other way round,
+// and every atlas waited on a 404 before loading.
+const PARTS_SRC=['samurai-parts.png','sprites/samurai-parts.png'];
 // name: [atlasX, atlasY, w, h, pivotX, pivotY]
 // The pivot is the JOINT, as a fraction of the piece — the shoulder on an arm,
 // the neck on a head, the grip on a katana — because that is the point the
@@ -4212,13 +4210,13 @@ const PARTS={
 };
 // Enemy atlas. Same idea, fewer pieces — the ninja's head is painted onto his
 // torso, which is fine because enemies never turn their heads independently.
-const EPARTS_SRC=['sprites/ninja-parts.png','ninja-parts.png'];
-const ENV_SRC=['sprites/env-parts.png','env-parts.png'];
+const EPARTS_SRC=['ninja-parts.png','sprites/ninja-parts.png'];
+const ENV_SRC=['env-parts.png','sprites/env-parts.png'];
 // The archer gets its own atlas — different silhouette, different weapon, and
 // its own draw cycle driven off the real shot timer. Enemy types that have no
 // atlas of their own fall back to the ninja art, and types with neither stay
 // procedural.
-const BPARTS_SRC=['sprites/boss-parts.png','boss-parts.png'];
+const BPARTS_SRC=['boss-parts.png','sprites/boss-parts.png'];
 const BPARTS={
   torso   :[  0,  0,268,325, .50,.06],
   cloak   :[270,  0,406,259, .10,.26],   // pivot at the gathered clasp
@@ -4238,7 +4236,7 @@ const BPARTS={
 const BPART_SCALE=.155;
 let _bpartsImg=null,_bpartsReady=false;
 
-const APARTS_SRC=['sprites/archer-parts.png','archer-parts.png'];
+const APARTS_SRC=['archer-parts.png','sprites/archer-parts.png'];
 const APARTS={
   torso :[  0,  0,166,473, .50,.05],
   leg   :[168,  0,130,290, .46,.04],
@@ -4320,15 +4318,15 @@ _loadAtlas(BPARTS_SRC,im=>{_bpartsImg=im;_bpartsReady=true;_bossAtlas[0]=im;},'b
 // slow connection gets the wrong costume rather than an invisible boss.
 const BOSS_ATLAS_SRC = [
   null,                                                   // 0 = Iron Oni, already loaded
-  ['sprites/boss2-parts.png','boss2-parts.png'],          // Shadow Twin
-  ['sprites/boss3-parts.png','boss3-parts.png'],          // Blood Shogun
-  ['sprites/boss4-parts.png','boss4-parts.png'],          // Jade Serpent
-  ['sprites/boss5-parts.png','boss5-parts.png'],          // Storm Daimyo
-  ['sprites/boss6-parts.png','boss6-parts.png'],          // Void Ronin
-  ['sprites/boss7-parts.png','boss7-parts.png'],          // Ghost Emperor
-  ['sprites/boss8-parts.png','boss8-parts.png'],          // Inferno Tengu
-  ['sprites/boss9-parts.png','boss9-parts.png'],          // Titan Samurai
-  ['sprites/boss10-parts.png','boss10-parts.png'],        // Death Itself
+  ['boss2-parts.png','sprites/boss2-parts.png'],          // Shadow Twin
+  ['boss3-parts.png','sprites/boss3-parts.png'],          // Blood Shogun
+  ['boss4-parts.png','sprites/boss4-parts.png'],          // Jade Serpent
+  ['boss5-parts.png','sprites/boss5-parts.png'],          // Storm Daimyo
+  ['boss6-parts.png','sprites/boss6-parts.png'],          // Void Ronin
+  ['boss7-parts.png','sprites/boss7-parts.png'],          // Ghost Emperor
+  ['boss8-parts.png','sprites/boss8-parts.png'],          // Inferno Tengu
+  ['boss9-parts.png','sprites/boss9-parts.png'],          // Titan Samurai
+  ['boss10-parts.png','sprites/boss10-parts.png'],        // Death Itself
 ];
 const _bossAtlas = {};          // boss index -> loaded Image
 let _bossAtlasWanted = 0;
@@ -4426,7 +4424,11 @@ function _loadSheet(key){
   st.img.onerror=()=>{};   // no sheet yet — expected, stay procedural
   st.img.src=def.src;
 }
-Object.keys(SHEETS).forEach(_loadSheet);
+// None of these sheets were ever made (the cutout rig replaced them), so
+// loading them only produced three 404s on every visit. Flip this when a
+// sheet actually exists in /sprites.
+const SHEETS_ENABLED=false;
+if(SHEETS_ENABLED)Object.keys(SHEETS).forEach(_loadSheet);
 
 function _hasSheet(key){const s=_sheet[key];return !!(s&&s.ready);}
 
@@ -8535,15 +8537,26 @@ requestAnimationFrame(()=>{
   // Show Continue label if player has saved progress
   _updateMenuButtons();
 
-  _count('arrived');
-  _countVisitorKind();
-  _countSource();
-  // Send the arrival trio NOW rather than waiting on the 1.2s batch timer.
-  // Someone who bounces in under a second was relying on the pagehide handler
-  // to flush, and that is not guaranteed — iOS can kill a swiped-away tab
-  // outright. Those are exactly the visitors worth counting, so arrival is
-  // never batched. Still one request: all three events ride together.
-  _ctFlush();
+  // Facebook's app preloads linked pages in the background, which ran this
+  // and counted an arrival with nobody looking: 10 "arrived" and 0 past the
+  // splash on 11 Oct, while the game itself loads fine in Facebook. Count the
+  // arrival only once the page is actually on screen.
+  const _arrive=()=>{
+    if(_arrive.done)return;_arrive.done=true;
+    _count('arrived');
+    _countVisitorKind();
+    _countSource();
+    // Send the arrival trio NOW rather than waiting on the 1.2s batch timer.
+    // Someone who bounces in under a second was relying on the pagehide handler
+    // to flush, and that is not guaranteed — iOS can kill a swiped-away tab
+    // outright. Those are exactly the visitors worth counting, so arrival is
+    // never batched. Still one request: all three events ride together.
+    _ctFlush();
+  };
+  if(document.visibilityState==='visible')_arrive();
+  else document.addEventListener('visibilitychange',function v(){
+    if(document.visibilityState==='visible'){document.removeEventListener('visibilitychange',v);_arrive();}
+  });
 
   // GDPR / Auth runs in background — doesn't hide splash
   checkGDPR();
