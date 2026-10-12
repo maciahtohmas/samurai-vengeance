@@ -2604,10 +2604,18 @@ function initLevel(){
   P.x=60;P.y=GY-P.h-20;
   P.vx=0;P.vy=0;P.jumps=2;P.gnd=true;
   P.parry=false;P.parryT=0;P.parryCD=0;P.punishT=0;P.inv=30; // 30 frames of spawn invincibility
+  // P.hp is zeroed by every "begin a run" path (new game, continue, stage
+  // select, chapter) and by nothing else, so it marks a fresh run.
+  const freshRun=P.hp<=0;
   // HP restore: full on first level or if dead; partial otherwise
   if(lvl===1||P.hp<=0){P.hp=P.maxHp;}
   else{P.hp=Math.min(P.maxHp,P.hp+P.maxHp*0.3);}
-  P.focus=isPrem?P.maxFocus*.3:0;
+  // Ki carries over from stage to stage until it is spent. It used to empty
+  // at every stage start, so a bar filled late in a stage was simply lost and
+  // there was no way to bank one for a boss. A new run still starts empty,
+  // and Premium's 30% head start is now a floor rather than a reset.
+  const kiFloor=isPrem?P.maxFocus*.3:0;
+  P.focus=freshRun?kiFloor:Math.max(P.focus,kiFloor);
   updateHUD();
   if(levelMod){const _m=LEVEL_MODS[levelMod];notif('\u2694 '+_m.name+' \u2014 '+_m.sub);}
 
@@ -6345,7 +6353,7 @@ const SLIDES=[
   {icon:'🛡️',title:'Parry',desc:'Activate Parry just before an enemy attack or projectile hits. A parry cancels the hit or destroys the arrow, adds to your combo, and makes your next swing a double-damage finisher.',keys:['S / Q  Parry']},
   {icon:'💥',title:'Ki Special',desc:'Fill the Ki bar by landing attacks. When full, unleash a time-freeze special that devastates all enemies on screen.',keys:['X / 💥 Button  Special']},
   {icon:'🏹',title:'Enemy Types',desc:'⚔ Grunts patrol and melee. 🏹 Archers fire arrows you can parry or dash through. 🛡 Shield Warriors block from the front: get behind them or parry. 🦅 Tengu dive from above.',keys:[]},
-  {icon:'👹',title:'Bosses',desc:'Every 10th stage is a Boss. They enter Phase II at 50% HP, firing triple shots and moving faster. Save your Ki Special for the fight!',keys:[]},
+  {icon:'👹',title:'Bosses',desc:'Every 10th stage is a Boss. They enter Phase II at 50% HP, firing triple shots and moving faster. Your Ki carries over between stages, so you can arrive with a full bar.',keys:[]},
 ];
 let _tutIdx=0;
 function openTutorial(){openP('tutP');}
@@ -7184,8 +7192,8 @@ const TUT_STEPS=[
    hint:t=>t>60*20?'Look up. Some are on the higher platforms.':''}
 ];
 const TUT_OUTRO=_T(
-  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, press <kbd>X</kbd> to hit everything on screen at once.',
-  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, a burst button appears. Tap it to hit everything on screen at once.');
+  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, press <kbd>X</kbd> to hit everything on screen at once. It carries over between stages until you use it.',
+  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, a burst button appears. Tap it to hit everything on screen at once. It carries over between stages until you use it.');
 
 function _tutEl(){return document.getElementById('tutCoach');}
 function _tutCalm(){return _tutActive&&_coachIdx<TUT_STEPS.length&&!!TUT_STEPS[_coachIdx].calm;}
