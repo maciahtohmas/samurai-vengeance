@@ -929,9 +929,9 @@ canvas{
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Jump / Double Jump</td><td style="padding:5px 4px;color:#fff;">↑ / W &nbsp;(tap twice)</td></tr>
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Attack</td><td style="padding:5px 4px;color:#fff;">Space / Z</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Dash</td><td style="padding:5px 4px;color:#fff;">Shift / L</td></tr>
-        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Parry</td><td style="padding:5px 4px;color:#fff;">S / Q &nbsp;(hold)</td></tr>
+        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Parry</td><td style="padding:5px 4px;color:#fff;">Q / E &nbsp;(hold)</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Ki Special</td><td style="padding:5px 4px;color:#fff;">X &nbsp;(when bar is full)</td></tr>
-        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Drop through</td><td style="padding:5px 4px;color:#fff;">↓ + Jump</td></tr>
+        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Drop through</td><td style="padding:5px 4px;color:#fff;">Hold S / ↓</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Pause</td><td style="padding:5px 4px;color:#fff;">Escape</td></tr>
       </table>
     </div>
@@ -2019,7 +2019,9 @@ window.addEventListener('keydown',e=>{
   // Either Shift. Only the left one was bound, so a right-hand Shift did nothing.
   if(e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='KeyL')doDash();
   if(e.code==='KeyX'){if(P.focus<P.maxFocus)_kiNotReady();else doSpc();}
-  if((e.code==='KeyS'||e.code==='KeyQ')&&!_parryHeld){_parryHeld=true;doParry();}
+  // Standard WASD: S is down (drop through a platform), so parry lives on Q
+  // and E. It used to be S or Q, which left no letter key for dropping.
+  if((e.code==='KeyQ'||e.code==='KeyE')&&!_parryHeld){_parryHeld=true;doParry();}
   // CrazyGames' requirements name Escape as a key to avoid: it exits THEIR
   // fullscreen, so binding it means one press both leaves fullscreen and
   // pauses. Harmless on the public site, a requirement violation on a portal.
@@ -2027,7 +2029,7 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{
   keys[e.code]=false;
-  if(e.code==='KeyS'||e.code==='KeyQ')_parryHeld=false;
+  if(e.code==='KeyQ'||e.code==='KeyE')_parryHeld=false;
 });
 function bt(id,k,fn,hap=12){
   const el=document.getElementById(id);if(!el)return;
@@ -2036,7 +2038,7 @@ function bt(id,k,fn,hap=12){
 }
 bt('bLeft','ArrowLeft',null,0);bt('bRight','ArrowRight',null,0);bt('bDown','ArrowDown',null,0);
 bt('bJump','ArrowUp',doJump);bt('bAtk','KeyZ',doAtk);bt('bSpc','KeyX',doSpc);
-bt('bDash','ShiftLeft',doDash,18);bt('bParry','KeyS',doParry,10);
+bt('bDash','ShiftLeft',doDash,18);bt('bParry','KeyQ',doParry,10);
 
 // ═══════════════════════════════════════════════════════
 // ACTIONS
@@ -3165,7 +3167,7 @@ function update(){
   P.gnd=false;
   let _onSpike=false;
   ledges.forEach(l=>{
-    if(P.vy>=0&&!keys.ArrowDown&&P.y+P.h>=l.y&&P.y+P.h<=l.y+P.vy+7&&P.x+P.w>l.x&&P.x<l.x+l.w){
+    if(P.vy>=0&&!keys.ArrowDown&&!keys.KeyS&&P.y+P.h>=l.y&&P.y+P.h<=l.y+P.vy+7&&P.x+P.w>l.x&&P.x<l.x+l.w){
       P.y=l.y-P.h;P.vy=0;P.gnd=true;P.jumps=2;
     }
     if(l.spikes>0&&!P.dash&&P.vy>=0&&P.inv<=0&&spikeBoxes(l).some(sb=>ri(P,sb))){
@@ -6388,10 +6390,10 @@ function _tickStats(){
 // TUTORIAL
 // ════════════════════════════════════
 const SLIDES=[
-  {icon:'🏃',title:'Movement',desc:'Run left and right. Double-jump to reach platforms. Hold Down + Jump to drop through platforms.',keys:['← → Move','W / ↑  Jump','↓ Drop Through']},
+  {icon:'🏃',title:'Movement',desc:'Run left and right. Double-jump to reach platforms. Hold S or Down to drop through platforms.',keys:['A D / ← →  Move','W / ↑  Jump','S / ↓  Drop Through']},
   {icon:'⚔️',title:'Attack & Combo',desc:'Slash nearby enemies. Chain hits to build your Combo multiplier — higher combos deal more damage and fill Ki faster.',keys:['Z / Space  Attack']},
   {icon:'⚡',title:'Dash',desc:'Dash forward — you\'re fully invincible during a dash. Use it to close distance or dodge through projectiles.',keys:['Shift / L  Dash']},
-  {icon:'🛡️',title:'Parry',desc:'Activate Parry just before an enemy attack or projectile hits. A parry cancels the hit or destroys the arrow, adds to your combo, and makes your next swing a double-damage finisher.',keys:['S / Q  Parry']},
+  {icon:'🛡️',title:'Parry',desc:'Activate Parry just before an enemy attack or projectile hits. A parry cancels the hit or destroys the arrow, adds to your combo, and makes your next swing a double-damage finisher.',keys:['Q / E  Parry']},
   {icon:'💥',title:'Ki Special',desc:'Fill the Ki bar by landing attacks. When full, unleash a time-freeze special that devastates all enemies on screen.',keys:['X / 💥 Button  Special']},
   {icon:'🏹',title:'Enemy Types',desc:'⚔ Grunts patrol and melee. 🏹 Archers fire arrows you can parry or dash through. 🛡 Shield Warriors block from the front: get behind them or parry. 🦅 Tengu dive from above.',keys:[]},
   {icon:'👹',title:'Bosses',desc:'Every 10th stage is a Boss. They enter Phase II at 50% HP, firing triple shots and moving faster. Your Ki carries over between stages, so you can arrive with a full bar.',keys:[]},
@@ -7259,7 +7261,7 @@ const TUT_STEPS=[
   // A parry only grants a Punish when it actually connects, so that is the
   // test. ST.parries counts button presses and would pass on a whiff.
   {id:'parry', btn:['bParry'], arrows:true,
-   text:_T('An arrow is coming. Hold <kbd>S</kbd> or <kbd>Q</kbd> just before it reaches you to parry it.',
+   text:_T('An arrow is coming. Hold <kbd>Q</kbd> or <kbd>E</kbd> just before it reaches you to parry it.',
            'An arrow is coming. Hold the shield just before it reaches you. It lights up when the timing is right.'),
    begin:()=>({}), done:()=>P.punishT>0,
    hint:()=>_tutHint},
