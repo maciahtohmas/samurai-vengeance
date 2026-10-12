@@ -3151,8 +3151,10 @@ function update(){
 
   if(P.dash){P.vx=P.face*17;P.vy=0;P.dashT--;if(P.dashT<=0)P.dash=false;}
   else{
-    if(keys.ArrowLeft){P.vx-=1.75;P.face=-1;}
-    if(keys.ArrowRight){P.vx+=1.75;P.face=1;}
+    // A and D were advertised everywhere (tutorial, How to Play) but never
+    // read here, so only the arrow keys moved. Reported by a player.
+    if(keys.ArrowLeft||keys.KeyA){P.vx-=1.75;P.face=-1;}
+    if(keys.ArrowRight||keys.KeyD){P.vx+=1.75;P.face=1;}
     P.vx*=.81;P.vy+=(levelMod==='feather'?.38:.57);
   }
   // parry is edge-triggered via keydown/_parryHeld — no held check needed here
