@@ -95,6 +95,24 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/creator.html"
+  to = "/creator"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/contact.html"
+  to = "/contact"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/press-kit.html"
+  to = "/press-kit"
+  status = 301
+  force = true
+
 # index.html is the game itself; send it to the bare root for the same reason.
 [[redirects]]
   from = "/index.html"
