@@ -6810,6 +6810,10 @@ function closeRewardAd(revive){
     initLevel();
     notif('💚 Revived! Fight on!');
     _checkAch('kills',ST.kills); // trigger ach check
+  } else if(gState==='gameover'){
+    // "No thanks" used to close the revive screen and show nothing behind it,
+    // leaving the player on an empty screen with no way to retry.
+    document.getElementById('goScreen').classList.add('active');
   }
 }
 window.showRewardAd=showRewardAd; window.closeRewardAd=closeRewardAd;
