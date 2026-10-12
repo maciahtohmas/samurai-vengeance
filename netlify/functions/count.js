@@ -82,6 +82,12 @@ const DIFFS  = new Set(['easy', 'normal', 'hard']);
 // game already keeps for the streak feature. 'same' = a second session today.
 const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 // Traffic source, bucketed on the client so only a known token ever arrives.
+// How a player got past the splash: its button, a tap anywhere else on it, or
+// one of the consent bar's buttons (which now carry on into the game).
+const ENTERS = new Set(['play', 'tap', 'accept', 'decline']);
+// Interactive tutorial: shown, each step completed, finished, skipped, and
+// replayed from the menu. Where 'shown' and 'move' diverge is the first wall.
+const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'done', 'skip', 'replay']);
 const SRCS   = new Set(['reddit', 'hn', 'google', 'search', 'itch', 'youtube',
                         'tiktok', 'social', 'discord', 'portal', 'internal',
                         'direct', 'other']);
@@ -111,6 +117,14 @@ function fieldFor(body) {
   if (e === 'src') {
     const k = String(body.k || '');
     return SRCS.has(k) ? 's_src_' + k : null;
+  }
+  if (e === 'enter') {
+    const k = String(body.k || '');
+    return ENTERS.has(k) ? 'enter_' + k : null;
+  }
+  if (e === 'tut') {
+    const k = String(body.k || '');
+    return TUTS.has(k) ? 'tut_' + k : null;
   }
   if (e === 'visitor') {
     const k = String(body.k || '');
@@ -145,7 +159,7 @@ function renderReport(days) {
 
     const funnel = [
       row('Arrived', arrived, arrived),
-      row('Reached the menu', g('menu'), arrived),
+      row('Got past the splash', g('menu'), arrived),
       row('Started a run', started, arrived),
       row('Began stage 1', g('s_start_1'), arrived),
       row('Cleared stage 1', g('s_clear_1'), arrived),
@@ -212,10 +226,29 @@ function renderReport(days) {
         &mdash; ${vD1} of the ${prevNew} who arrived for the first time yesterday.
         A healthy game sits near 40%.</p>`}` : '';
 
+    // Splash exits and tutorial steps. Both shipped 12 Oct, so earlier days
+    // show nothing here.
+    const ENTER_LABEL = { play: 'Tapped PLAY NOW', tap: 'Tapped elsewhere on the splash',
+      accept: 'Tapped Accept on the consent bar', decline: 'Tapped Decline on the consent bar' };
+    const enters = Object.keys(ENTER_LABEL).map(k => ({ k, n: g('enter_' + k) })).filter(x => x.n);
+    const enterTotal = enters.reduce((t, x) => t + x.n, 0);
+    const enterBlock = enterTotal ? `<h3>How they got past the splash</h3>
+      <table class="walls"><tbody>${enters.map(x => `<tr><th>${esc(ENTER_LABEL[x.k])}</th>
+        <td class="n">${x.n}</td><td class="pct">${Math.round((x.n / enterTotal) * 100)}%</td></tr>`).join('')}
+      </tbody></table>` : '';
+    const tShown = g('tut_shown');
+    const TUT_ROWS = [['Saw the tutorial', 'shown'], ['Moved', 'move'], ['Jumped', 'jump'],
+      ['Defeated an enemy', 'attack'], ['Landed a parry', 'parry'], ['Finished it', 'done']];
+    const tutBlock = tShown ? `<h3>Tutorial</h3>
+      <table class="funnel"><tbody>${TUT_ROWS.map(([l, k]) => row(l, g('tut_' + k), tShown)).join('')}</tbody></table>
+      <p class="note">${g('tut_skip')} skipped it. ${g('tut_replay')} replayed it from the menu.</p>` : '';
+
     return `<section>
       <h2>${esc(d.id)}</h2>
       ${arrived ? `<table class="funnel">${funnel}</table>` : '<p class="empty">No traffic recorded.</p>'}
       ${diffs ? `<ul class="diffs">${diffs}</ul>` : ''}
+      ${enterBlock}
+      ${tutBlock}
       ${srcBlock}
       ${retBlock}
       ${wallRows ? `<h3>Where runs ended</h3>
