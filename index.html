@@ -456,6 +456,8 @@ canvas{
 #tutCoach .tc-txt{font-size:15px;line-height:1.45;color:#f3e6c4;}
 #tutCoach kbd{display:inline-block;min-width:1.6em;padding:0 5px;margin:0 1px;border:1px solid rgba(220,180,80,.55);
   border-bottom-width:2px;border-radius:3px;font:12px/1.5 Georgia,serif;color:#fbbf24;background:rgba(255,255,255,.04);}
+#tutCoach .tc-hint{margin-top:6px;font-size:13px;line-height:1.4;color:#fcd34d;font-style:italic;}
+#tutCoach b{color:#fbbf24;}
 #tutCoach .tut-ok{color:#86efac;font-size:16px;letter-spacing:.06em;}
 #tutCoach .tc-skip{pointer-events:auto;margin-top:6px;background:none;border:none;color:rgba(255,255,255,.45);
   font:11px Georgia,serif;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;cursor:pointer;}
@@ -940,7 +942,7 @@ canvas{
       <table style="width:100%;border-collapse:collapse;font-size:10px;">
         <tr><td style="padding:5px 4px;color:#e8b840;width:30%;">Grunt</td><td style="padding:5px 4px;color:rgba(255,255,255,.7);">Patrols and attacks at close range. Easy to parry.</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:#60a5fa;">Archer</td><td style="padding:5px 4px;color:rgba(255,255,255,.7);">Fires arrows from a distance. Dash through them.</td></tr>
-        <tr><td style="padding:5px 4px;color:#a78bfa;">Shield</td><td style="padding:5px 4px;color:rgba(255,255,255,.7);">Always turns to face you. Parry it like a grunt.</td></tr>
+        <tr><td style="padding:5px 4px;color:#a78bfa;">Shield</td><td style="padding:5px 4px;color:rgba(255,255,255,.7);">Blocks from the front. Jump over, dash past, or parry to break its guard.</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:#f87171;">Boss</td><td style="padding:5px 4px;color:rgba(255,255,255,.7);">Every 10 stages. Two phases — stay aggressive.</td></tr>
       </table>
     </div>
@@ -1076,8 +1078,9 @@ canvas{
 <!-- ══ GDPR CONSENT BANNER ══ -->
 <!-- Tutorial coach: one instruction at a time, see _checkTutorialPrompt -->
 <div id="tutCoach" role="status" aria-live="polite">
-  <div class="tc-step" id="tutCoachStep">Step 1 of 4</div>
+  <div class="tc-step" id="tutCoachStep">Step 1 of 5</div>
   <div class="tc-txt" id="tutCoachTxt"></div>
+  <div class="tc-hint" id="tutCoachHint" style="display:none"></div>
   <button class="tc-skip" id="tutCoachSkip" onclick="tutSkip()">Skip tutorial</button>
 </div>
 <div id="gdpr">
@@ -2236,6 +2239,60 @@ function moveHitBox(move){
   return { x:lo, y:oy+ly0, w:Math.max(0,hi-lo), h:ly1-ly0 };
 }
 
+// ── Shield-bearer guard ─────────────────────────────────────────────
+// The shield is held toward whoever it faces. A hit from that side is
+// blocked; a hit from behind lands. Three ways round it, all of them things
+// the game already teaches: jump or dash past it (it takes SHIELD_TURN frames
+// to swing round), parry it (guard broken for SHIELD_BREAK frames, knocked
+// facing away), or the Ki special, which does not go through here at all.
+const SHIELD_TURN=36, SHIELD_BREAK=120;
+// SHIELD — targe-style, realistic metal. Shared by the procedural shield-bearer
+// and the sprite one: with the sprite sheet loaded, a shield-bearer used to be
+// drawn as a plain ninja with no shield at all, indistinguishable from a grunt.
+// Braces up and forward as the player closes, and absorbs a shove on impact,
+// so it reads as something being actively held rather than a painted-on prop.
+// Drawn in the enemy's local space (already scaled by e.face), on the +x side
+// it guards; the scale(-1,1) mirrors art authored on the -x side.
+function _drawTarge(e){
+  const close=Math.max(0,1-Math.abs((P.x+P.w/2)-(e.x+e.w/2))/170);
+  const brace=close*close;
+  const shove=(e.hurtT||0)/7;
+  gx.save();
+  gx.scale(-1,1);
+  gx.translate(-brace*3+shove*5,-brace*2);
+  gx.rotate(-brace*.16+shove*.12);
+  if(e.guardT>0){gx.globalAlpha*=.45;gx.rotate(.5);}   // guard broken: lowered and dim
+  const shldG=gx.createLinearGradient(-30,12,-14,44);shldG.addColorStop(0,'#162040');shldG.addColorStop(.3,'#1e3a8a');shldG.addColorStop(.6,'#162040');shldG.addColorStop(1,'#0c1428');
+  gx.fillStyle=shldG;gx.beginPath();gx.moveTo(-28,10);gx.lineTo(-14,10);gx.lineTo(-14,44);gx.lineTo(-24,48);gx.lineTo(-30,40);gx.closePath();gx.fill();
+  // Shield rim — hammered bronze
+  const rim=gx.createLinearGradient(-30,10,-14,10);rim.addColorStop(0,'#6b4a00');rim.addColorStop(.5,'#d4af37');rim.addColorStop(1,'#6b4a00');
+  gx.strokeStyle=rim;gx.lineWidth=2;gx.beginPath();gx.moveTo(-28,10);gx.lineTo(-14,10);gx.lineTo(-14,44);gx.lineTo(-24,48);gx.lineTo(-30,40);gx.closePath();gx.stroke();
+  // Shield boss (center ornament)
+  const boss2=gx.createRadialGradient(-22,28,0,-22,28,5);boss2.addColorStop(0,'#f0d060');boss2.addColorStop(.5,'#c9952a');boss2.addColorStop(1,'#7b5000');
+  gx.fillStyle=boss2;gx.shadowBlur=6;gx.shadowColor='rgba(201,149,42,.5)';gx.beginPath();gx.arc(-22,28,5,0,Math.PI*2);gx.fill();gx.shadowBlur=0;
+  gx.restore();
+}
+function _shieldBlocks(e){
+  if(e.guardT>0)return false;
+  const side=(P.x+P.w/2)-(e.x+e.w/2);
+  return side*e.face>0;                  // player is on the shield side
+}
+let _shieldHintShown=false;
+try{_shieldHintShown=localStorage.getItem('sv5_shield_hint')==='1';}catch(e){}
+function _shieldBlocked(e){
+  e.hurtT=5;                             // the brace animation reads as the impact
+  P.vx=-P.face*5;                        // the blade bounces off
+  shake(4);
+  if(CFG.sfx){try{tone(820,'square',.04,.14,.001);tone(1240,'triangle',.06,.1,.001);}catch(err){}}
+  spawnP(e.x+e.w/2+e.face*16,e.y+e.h/2,'#cbd5e1',8);
+  addFloat(e.x+e.w/2,e.y-6,'BLOCKED','#94a3b8');
+  // Taught once, at the moment it matters, instead of in a rules screen.
+  if(!_shieldHintShown){
+    _shieldHintShown=true;
+    try{localStorage.setItem('sv5_shield_hint','1');}catch(err){}
+    notif('Shields block from the front. Jump over, dash past or parry to get behind.');
+  }
+}
 function checkHit(move){
   if(!move)move=COMBO_MOVES[0];
   const ab=moveHitBox(move);
@@ -2248,7 +2305,7 @@ function checkHit(move){
   enemies.forEach(e=>{
     if(e.hp<=0)return;
     if(!ri(ab,e))return;
-    if(e.type==='shield'&&e.face===P.face)return; // shield blocks frontal
+    if(e.type==='shield'&&_shieldBlocks(e)){_shieldBlocked(e);return;}
 
     e.hp-=finalDmg;e.hurtT=7;e.barT=150;e.hurtDir=(e.x+e.w/2)<(P.x+P.w/2)?-1:1;
     hit=true;
@@ -2410,6 +2467,7 @@ function _reachParry(){
     if(Math.abs(dy)>70)continue;                  // different platform
     if(Math.hypot(dx,dy)>CUE_MELEE)continue;
     e.face*=-1;e.atkCD=115;
+    if(e.type==='shield'){e.guardT=SHIELD_BREAK;e.turnT=0;}
     sfx.parry();_pStop=PARRY_STOP;shake(5);
     spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);
     addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');
@@ -3117,6 +3175,8 @@ function update(){
         p.done=true;sfx.parry();_pStop=PARRY_STOP;shake(5);spawnP(p.x,p.y,'#60a5fa',14);
         addFloat(P.x+P.w/2,P.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();
         grantPunish(P.x+P.w/2,P.y);
+      } else if(p.tut&&!P.dash){
+        p.done=true;_tutArrowMissed();       // practice arrow: a lesson, not damage
       } else if(!P.dash&&P.inv<=0){
         p.done=true;P.hp-=modDmg(cfg.dmg*.55);shake(8);sfx.hit();updateHUD();
         spawnP(p.x,p.y,'#f97316',10);addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg*.55)),'#ff4444');
@@ -3298,12 +3358,22 @@ function patrolStep(e,lockFace){
 
 function updateEnemy(e,cfg){
   if(e.hp<=0)return; // skip dead enemies
+  if(_tutCalm())return; // tutorial move/jump steps: nobody gets hit learning to walk
   if(e.type==='tengu'){updateTengu(e,cfg);return;}
   if(e.atkCD>0)e.atkCD--;
   // The shield turns to face the player, so its facing is not the patrol's to
   // flip — otherwise at a platform edge the two fight each other every frame.
   const _lock=e.type==='shield';
-  if(_lock)e.face=P.x>e.x?1:-1;
+  if(_lock){
+    // It used to snap to face the player every frame, so there was no
+    // "behind" to get to. Now it takes a moment to swing round.
+    if(e.guardT>0){e.guardT--;e.turnT=0;}
+    else{
+      const want=P.x>e.x?1:-1;
+      if(want!==e.face){e.turnT=(e.turnT||0)+1;if(e.turnT>=SHIELD_TURN){e.face=want;e.turnT=0;}}
+      else e.turnT=0;
+    }
+  }
   patrolStep(e,_lock);
   if(e.type==='archer'){
     e.shotCD--;
@@ -3327,7 +3397,7 @@ function updateEnemy(e,cfg){
   // airborne is evasion, not invulnerability.
   const _sameFooting=P.gnd&&Math.abs((e.y+e.h)-(P.y+P.h))<34;
   if(_sameFooting&&riHit(P,e)&&e.atkCD<=0){
-    if(P.parry){sfx.parry();_pStop=PARRY_STOP;e.face*=-1;e.atkCD=115;shake(5);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();grantPunish(P.x+P.w/2,P.y);}
+    if(P.parry){if(e.type==='shield'){e.guardT=SHIELD_BREAK;e.turnT=0;}sfx.parry();_pStop=PARRY_STOP;e.face*=-1;e.atkCD=115;shake(5);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();grantPunish(P.x+P.w/2,P.y);}
     else if(!P.dash&&P.inv<=0){P.hp-=modDmg(cfg.dmg);e.atkCD=82;P.vx=P.x<e.x?-10:10;P.vy=-6;shake(14);sfx.hit();updateHUD();addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg)),'#ff3333');}
   }
 }
@@ -5264,6 +5334,7 @@ function drawEnemy(e){
     drawEPart('forearm',0,0,0);
     drawEPart('katana',1,FA,-Math.PI/2+.9-eArm-eElb);
     gx.restore();
+    if(e.type==='shield')_drawTarge(e);
     gx.restore();
     return;
   }
@@ -5463,25 +5534,9 @@ function drawEnemy(e){
     gx.fillStyle='rgba(220,38,38,.9)';gx.shadowBlur=8;gx.shadowColor='#ff0000';gx.fillRect(-8,9,16,3);gx.shadowBlur=0;
     // Helm crest
     gx.fillStyle='#8b0000';gx.beginPath();gx.moveTo(-2,-4);gx.lineTo(0,-12);gx.lineTo(2,-4);gx.closePath();gx.fill();
-    // SHIELD — targe-style, realistic metal.
-    // Braces up and forward as the player closes, and absorbs a shove on
-    // impact, so the shield reads as something being actively held rather
-    // than a painted-on prop.
-    const close=Math.max(0,1-Math.abs((P.x+P.w/2)-(e.x+e.w/2))/170);
-    const brace=close*close;
-    const shove=(e.hurtT||0)/7;
-    gx.save();
-    gx.translate(-brace*3+shove*5,-brace*2);
-    gx.rotate(-brace*.16+shove*.12);
-    const shldG=gx.createLinearGradient(-30,12,-14,44);shldG.addColorStop(0,'#162040');shldG.addColorStop(.3,'#1e3a8a');shldG.addColorStop(.6,'#162040');shldG.addColorStop(1,'#0c1428');
-    gx.fillStyle=shldG;gx.beginPath();gx.moveTo(-28,10);gx.lineTo(-14,10);gx.lineTo(-14,44);gx.lineTo(-24,48);gx.lineTo(-30,40);gx.closePath();gx.fill();
-    // Shield rim — hammered bronze
-    const rim=gx.createLinearGradient(-30,10,-14,10);rim.addColorStop(0,'#6b4a00');rim.addColorStop(.5,'#d4af37');rim.addColorStop(1,'#6b4a00');
-    gx.strokeStyle=rim;gx.lineWidth=2;gx.beginPath();gx.moveTo(-28,10);gx.lineTo(-14,10);gx.lineTo(-14,44);gx.lineTo(-24,48);gx.lineTo(-30,40);gx.closePath();gx.stroke();
-    // Shield boss (center ornament)
-    const boss2=gx.createRadialGradient(-22,28,0,-22,28,5);boss2.addColorStop(0,'#f0d060');boss2.addColorStop(.5,'#c9952a');boss2.addColorStop(1,'#7b5000');
-    gx.fillStyle=boss2;gx.shadowBlur=6;gx.shadowColor='rgba(201,149,42,.5)';gx.beginPath();gx.arc(-22,28,5,0,Math.PI*2);gx.fill();gx.shadowBlur=0;
-    // Sword
+    _drawTarge(e);
+    // Sword, held back on the side away from the shield
+    gx.save();gx.scale(-1,1);
     const ssw=gx.createLinearGradient(10,20,34,24);ssw.addColorStop(0,'#4a5060');ssw.addColorStop(.5,'#c0ccd8');ssw.addColorStop(1,'#3a4050');
     gx.fillStyle=ssw;gx.fillRect(10,21,24,4);gx.fillRect(8,18,8,10);
     gx.fillStyle='rgba(255,255,255,.4)';gx.fillRect(15,21,19,1.5);
@@ -6280,7 +6335,7 @@ const SLIDES=[
   {icon:'⚡',title:'Dash',desc:'Dash forward — you\'re fully invincible during a dash. Use it to close distance or dodge through projectiles.',keys:['Shift / L  Dash']},
   {icon:'🛡️',title:'Parry',desc:'Activate Parry just before an enemy attack or projectile hits. A parry cancels the hit or destroys the arrow, adds to your combo, and makes your next swing a double-damage finisher.',keys:['S / Q  Parry']},
   {icon:'💥',title:'Ki Special',desc:'Fill the Ki bar by landing attacks. When full, unleash a time-freeze special that devastates all enemies on screen.',keys:['X / 💥 Button  Special']},
-  {icon:'🏹',title:'Enemy Types',desc:'⚔ Grunts patrol and melee. 🏹 Archers fire arrows you can parry or dash through. 🛡 Shield Warriors always turn to face you. 🦅 Tengu dive from above.',keys:[]},
+  {icon:'🏹',title:'Enemy Types',desc:'⚔ Grunts patrol and melee. 🏹 Archers fire arrows you can parry or dash through. 🛡 Shield Warriors block from the front: get behind them or parry. 🦅 Tengu dive from above.',keys:[]},
   {icon:'👹',title:'Bosses',desc:'Every 10th stage is a Boss. They enter Phase II at 50% HP, firing triple shots and moving faster. Save your Ki Special for the fight!',keys:[]},
 ];
 let _tutIdx=0;
@@ -7064,65 +7119,97 @@ window.copyReferralLink=copyReferralLink;
 // after three seconds. People learn a verb by using it, so every step here is
 // something you do, not something you read.
 //
+// The first two steps freeze the enemies, so nobody is hit while finding the
+// buttons. The parry step fires its own slow, harmless practice arrows rather
+// than hoping an enemy wanders into range at the right moment. If a step
+// stalls, a hint appears under it. The last step names the actual goal of a
+// stage, which nothing else in the game ever said.
+//
 // It runs on a first-time player's first stage, survives deaths and stage
-// changes (a parry step can roll over into stage 2 if stage 1 runs out of
-// enemies), and can be replayed from the menu. Skip is always on screen.
+// changes, and can be replayed from the menu. Skip is always on screen.
 const TUT_KEY='sv5_tut_done';
 let _tutPending=false,_tutActive=false,_coachIdx=0,_tutBase=null,_tutDoneT=0,_tutFinishT=0;
+let _tutStepT=0,_tutHint='',_tutArrowT=0,_tutPrevParry=false;
 let _tutInput=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)?'touch':'keys';
 function _tutIsDone(){try{return localStorage.getItem(TUT_KEY)==='1';}catch(e){return false;}}
 function _tutMarkDone(){try{localStorage.setItem(TUT_KEY,'1');}catch(e){}}
+const _T=(keys,touch)=>()=>_tutInput==='touch'?touch:keys;
 
 const TUT_STEPS=[
-  {id:'move', btn:['bLeft','bRight'],
-   keys:'Move with <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd>',
-   touch:'Hold the arrows on the left to move',
-   begin:()=>({x:P.x}), done:b=>Math.abs(P.x-b.x)>140},
-  {id:'jump', btn:['bJump'],
-   keys:'Jump with <kbd>&uarr;</kbd> or <kbd>W</kbd>. Press it again in the air to double jump.',
-   touch:'Tap jump. Tap it again in the air to double jump.',
-   begin:()=>({}), done:()=>P.jumps<2&&!P.gnd},
+  {id:'move', btn:['bLeft','bRight'], calm:true,
+   text:_T('Move with <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd>',
+           'Hold the arrows on the left to move'),
+   begin:()=>({x:P.x}), done:b=>Math.abs(P.x-b.x)>140,
+   hint:t=>t>60*8?_T('Hold one of those keys down to keep running.','The two arrow buttons are at the bottom left. Hold one down.')():''},
+  {id:'jump', btn:['bJump'], calm:true,
+   text:_T('Jump with <kbd>&uarr;</kbd> or <kbd>W</kbd>, then press it again in the air to double jump.',
+           'Tap jump, then tap it again in the air to double jump.'),
+   begin:()=>({single:false}),
+   // The double jump is what reaches the higher platforms, so the step
+   // waits for it rather than passing on any hop.
+   done:b=>{if(P.jumps===1&&!P.gnd)b.single=true;return P.jumps===0;},
+   hint:(t,b)=>b.single&&P.gnd?'Almost. Press jump again while you’re still in the air.':''},
   {id:'attack', btn:['bAtk'],
-   keys:'Attack with <kbd>Space</kbd> or <kbd>Z</kbd>. Defeat an enemy.',
-   touch:'Tap the sword to attack. Defeat an enemy.',
-   begin:()=>({k:ST.kills}), done:b=>ST.kills>b.k},
+   text:_T('Attack with <kbd>Space</kbd> or <kbd>Z</kbd>. Defeat an enemy.',
+           'Tap the sword to attack. Defeat an enemy.'),
+   begin:()=>({k:ST.kills}), done:b=>ST.kills>b.k,
+   hint:t=>t>60*10?'Enemies stand on the platforms. Jump up to reach one.':''},
   // A parry only grants a Punish when it actually connects, so that is the
   // test. ST.parries counts button presses and would pass on a whiff.
-  {id:'parry', btn:['bParry'],
-   keys:'Hold <kbd>S</kbd> or <kbd>Q</kbd> just as an enemy walks into you or an arrow arrives. That’s a parry.',
-   touch:'Hold the shield just as an enemy walks into you or an arrow arrives. That’s a parry.',
-   begin:()=>({}), done:()=>P.punishT>0}
+  {id:'parry', btn:['bParry'], arrows:true,
+   text:_T('An arrow is coming. Hold <kbd>S</kbd> or <kbd>Q</kbd> just before it reaches you to parry it.',
+           'An arrow is coming. Hold the shield just before it reaches you. It lights up when the timing is right.'),
+   begin:()=>({}), done:()=>P.punishT>0,
+   hint:()=>_tutHint},
+  {id:'clear', btn:[],
+   text:()=>{
+     const n=enemies.filter(e=>e.hp>0).length;
+     return 'Defeat every enemy to clear the stage. <b>'+n+'</b> left.';
+   },
+   begin:()=>({}), done:()=>enemies.length===0,
+   hint:t=>t>60*20?'Look up. Some are on the higher platforms.':''}
 ];
-const TUT_OUTRO={
-  keys:'Nice. Your next swing after a parry does double damage. <kbd>Shift</kbd> dashes, and a full Ki bar unlocks <kbd>X</kbd>, a hit on everything on screen.',
-  touch:'Nice. Your next swing after a parry does double damage. The lightning button dashes, and a full Ki bar unlocks a hit on everything on screen.'
-};
+const TUT_OUTRO=_T(
+  'You’re ready. <kbd>Shift</kbd> dashes, and when the Ki bar fills, <kbd>X</kbd> hits everything on screen at once.',
+  'You’re ready. The lightning button dashes, and when the Ki bar fills, a burst button appears that hits everything on screen at once.');
 
 function _tutEl(){return document.getElementById('tutCoach');}
+function _tutCalm(){return _tutActive&&_coachIdx<TUT_STEPS.length&&!!TUT_STEPS[_coachIdx].calm;}
 function _tutGlow(ids){
   document.querySelectorAll('.tut-glow').forEach(e=>e.classList.remove('tut-glow'));
   if(_tutInput!=='touch')return;
   (ids||[]).forEach(id=>{const el=document.getElementById(id);if(el)el.classList.add('tut-glow');});
 }
+let _tutLastHtml='';
 function _tutRender(){
   const el=_tutEl();if(!el)return;
-  const txt=document.getElementById('tutCoachTxt'),stp=document.getElementById('tutCoachStep');
+  let step,txt,hint='',skip='Skip tutorial',glow=[];
   if(_coachIdx>=TUT_STEPS.length){
-    stp.textContent='Tutorial complete';
-    txt.innerHTML=TUT_OUTRO[_tutInput];
-    document.getElementById('tutCoachSkip').textContent='Got it';
-    _tutGlow([]);
-    return;
+    step='Tutorial complete';txt=TUT_OUTRO();skip='Got it';
+  } else {
+    const s=TUT_STEPS[_coachIdx];
+    step='Step '+(_coachIdx+1)+' of '+TUT_STEPS.length;
+    if(_tutDoneT>0){txt='<span class="tut-ok">&#10003; Done</span>';}
+    else{txt=s.text();hint=s.hint?s.hint(_tutStepT,_tutBase):'';glow=s.btn;}
   }
-  const s=TUT_STEPS[_coachIdx];
-  stp.textContent='Step '+(_coachIdx+1)+' of '+TUT_STEPS.length;
-  txt.innerHTML=_tutDoneT>0?'<span class="tut-ok">&#10003; Done</span>':s[_tutInput];
-  document.getElementById('tutCoachSkip').textContent='Skip tutorial';
-  _tutGlow(_tutDoneT>0?[]:s.btn);
+  // Rendered every tick for the live enemy count and hints, so only touch
+  // the DOM when something actually changed.
+  const html=step+'|'+txt+'|'+hint+'|'+skip;
+  if(html===_tutLastHtml)return;
+  _tutLastHtml=html;
+  document.getElementById('tutCoachStep').textContent=step;
+  document.getElementById('tutCoachTxt').innerHTML=txt;
+  const h=document.getElementById('tutCoachHint');h.innerHTML=hint;h.style.display=hint?'block':'none';
+  document.getElementById('tutCoachSkip').textContent=skip;
+  _tutGlow(glow);
+}
+function _tutStartStep(){
+  _tutStepT=0;_tutHint='';_tutArrowT=50;
+  if(_coachIdx<TUT_STEPS.length)_tutBase=TUT_STEPS[_coachIdx].begin();
 }
 function _tutBegin(){
-  _tutPending=false;_tutActive=true;_coachIdx=0;_tutDoneT=0;_tutFinishT=0;
-  _tutBase=TUT_STEPS[0].begin();
+  _tutPending=false;_tutActive=true;_coachIdx=0;_tutDoneT=0;_tutFinishT=0;_tutLastHtml='';
+  _tutStartStep();
   _count('tut',{k:'shown'});
   _tutRender();
 }
@@ -7130,6 +7217,7 @@ function _tutEnd(how){
   _tutActive=false;_tutPending=false;
   _tutMarkDone();
   _tutGlow([]);
+  projs=projs.filter(q=>!q.tut);
   const el=_tutEl();if(el)el.classList.remove('on');
   if(how)_count('tut',{k:how});
 }
@@ -7143,6 +7231,20 @@ function replayTutorial(){
   _count('tut',{k:'replay'});
   continueGame();
 }
+// Practice arrow for the parry step: from whichever screen edge is further
+// away, at chest height, at this difficulty's normal arrow speed. Harmless.
+function _tutFireArrow(){
+  const cfg=DIFF[diff]||DIFF.normal;
+  const fromRight=(P.x+P.w/2)<VW/2;
+  const x=fromRight?VW+10:-10, y=P.y+P.h*.45;
+  projs.push({x,y,vx:(fromRight?-1:1)*cfg.pSpd,vy:0,done:false,arrow:true,tut:true});
+  try{sfx.proj();}catch(e){}
+}
+// A practice arrow reached the player without being parried.
+function _tutArrowMissed(){
+  _tutHint='Too late. Hold it as the arrow gets close, before it touches you.';
+  shake(4);
+}
 // Called every update() tick.
 function _checkTutorialPrompt(){
   if(_tutPending&&!_tutActive&&gState==='playing')_tutBegin();
@@ -7152,30 +7254,44 @@ function _checkTutorialPrompt(){
   if(el)el.classList.toggle('on',live);
   if(!live)return;
 
-  if(_coachIdx>=TUT_STEPS.length){                 // closing card
-    if(++_tutFinishT>60*9)_tutEnd(null);
+  if(_coachIdx>=TUT_STEPS.length){                // closing card
+    if(++_tutFinishT>60*10)_tutEnd(null);
     return;
   }
-  if(_tutDoneT>0){                               // brief tick before the next step
+  if(_tutDoneT>0){                                // brief tick before the next step
     if(--_tutDoneT===0){
       _coachIdx++;
       if(_coachIdx>=TUT_STEPS.length)_count('tut',{k:'done'});
-      else _tutBase=TUT_STEPS[_coachIdx].begin();
-      _tutRender();
+      _tutStartStep();
     }
+    _tutRender();
     return;
   }
   const s=TUT_STEPS[_coachIdx];
+  _tutStepT++;
+  if(s.arrows){
+    const flying=projs.some(q=>q.tut&&!q.done);
+    if(!flying&&--_tutArrowT<=0){_tutFireArrow();_tutArrowT=110;}
+    // Pressed parry while the arrow was still far off: too early.
+    if(P.parry&&!_tutPrevParry){
+      const a=projs.find(q=>q.tut&&!q.done);
+      if(a&&Math.hypot(a.x-(P.x+P.w/2),a.y-(P.y+P.h/2))>CUE_PROJ)
+        _tutHint='Too early. Wait until the arrow is close, then hold the shield.';
+    }
+    _tutPrevParry=P.parry;
+  }
   if(s.done(_tutBase)){
     _count('tut',{k:s.id});
     _tutDoneT=45;
-    _tutRender();
+    if(s.arrows)projs=projs.filter(q=>!q.tut);
+    try{sfx.coin();}catch(e){}
   }
+  _tutRender();
 }
 // Follow whichever input the player is actually using, so a laptop with a
 // touchscreen gets key names once they press a key, and vice versa.
-addEventListener('keydown',()=>{if(_tutInput!=='keys'){_tutInput='keys';if(_tutActive)_tutRender();}},{passive:true});
-addEventListener('touchstart',()=>{if(_tutInput!=='touch'){_tutInput='touch';if(_tutActive)_tutRender();}},{passive:true});
+addEventListener('keydown',()=>{if(_tutInput!=='keys'){_tutInput='keys';_tutLastHtml='';if(_tutActive)_tutRender();}},{passive:true});
+addEventListener('touchstart',()=>{if(_tutInput!=='touch'){_tutInput='touch';_tutLastHtml='';if(_tutActive)_tutRender();}},{passive:true});
 // Hidden whenever the game is not actually running (menu, pause, game over).
 // update() stops ticking then, so it cannot do this itself.
 setInterval(()=>{const el=_tutEl();if(el&&el.classList.contains('on')&&(gState!=='playing'||paused))el.classList.remove('on');},200);

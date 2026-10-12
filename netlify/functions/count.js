@@ -87,7 +87,7 @@ const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 const ENTERS = new Set(['play', 'tap', 'accept', 'decline']);
 // Interactive tutorial: shown, each step completed, finished, skipped, and
 // replayed from the menu. Where 'shown' and 'move' diverge is the first wall.
-const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'done', 'skip', 'replay']);
+const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'clear', 'done', 'skip', 'replay']);
 const SRCS   = new Set(['reddit', 'hn', 'google', 'search', 'itch', 'youtube',
                         'tiktok', 'social', 'discord', 'portal', 'internal',
                         'direct', 'other']);
@@ -238,7 +238,7 @@ function renderReport(days) {
       </tbody></table>` : '';
     const tShown = g('tut_shown');
     const TUT_ROWS = [['Saw the tutorial', 'shown'], ['Moved', 'move'], ['Jumped', 'jump'],
-      ['Defeated an enemy', 'attack'], ['Landed a parry', 'parry'], ['Finished it', 'done']];
+      ['Defeated an enemy', 'attack'], ['Landed a parry', 'parry'], ['Cleared the stage', 'clear'], ['Finished it', 'done']];
     const tutBlock = tShown ? `<h3>Tutorial</h3>
       <table class="funnel"><tbody>${TUT_ROWS.map(([l, k]) => row(l, g('tut_' + k), tShown)).join('')}</tbody></table>
       <p class="note">${g('tut_skip')} skipped it. ${g('tut_replay')} replayed it from the menu.</p>` : '';
