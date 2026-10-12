@@ -75,7 +75,21 @@
      STILL OUTSTANDING: the two ad units below carry a placeholder
      data-ad-slot. Create the units at adsense.google.com and paste the
      real slot IDs in, or those two slots render nothing. -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5183339731726250" crossorigin="anonymous"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5183339731726250" data-ad-frequency-hint="120s" crossorigin="anonymous"></script>
+<script>
+// AdSense H5 Games Ads (Google's ad-break API for web games, the browser
+// counterpart of AdMob interstitials and rewarded ads). adBreak/adConfig
+// only queue onto adsbygoogle; nothing is requested unless MONEY.h5 is on.
+// ?adtest=1 switches the tag to Google's fake test ads for checking
+// placements; it must be set before the async tag executes, which is why
+// this runs inline right after it.
+window.adsbygoogle=window.adsbygoogle||[];
+var adBreak=adConfig=function(o){adsbygoogle.push(o);};
+if(/[?&]adtest=1/.test(location.search)){
+  var _ag=document.querySelector('script[src*="adsbygoogle"]');
+  if(_ag)_ag.setAttribute('data-adbreak-test','on');
+}
+</script>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -1319,6 +1333,7 @@ canvas{
     <div id="rewardAdTmr" style="font-size:12px;color:rgba(255,255,255,.5);margin-bottom:12px;letter-spacing:.1em;"></div>
     <div style="display:flex;gap:8px;">
       <button id="rewardSkipBtn" onclick="closeRewardAd(false)" style="flex:1;padding:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:4px;color:rgba(255,255,255,.6);font-family:Georgia,serif;font-size:12px;cursor:pointer;pointer-events:auto;">No thanks</button>
+      <button id="rewardWatchBtn" style="display:none;flex:1;padding:12px;background:linear-gradient(135deg,#7c4a00,#c9952a);border:none;border-radius:4px;color:#000;font-family:Georgia,serif;font-weight:700;cursor:pointer;pointer-events:auto;">&#9654; Watch ad to revive</button>
       <button id="rewardClaimBtn" onclick="closeRewardAd(true)" style="display:none;flex:1;padding:12px;background:linear-gradient(135deg,#1a6b00,#2ecc40);border:none;border-radius:4px;color:#fff;font-family:Georgia,serif;font-size:13px;font-weight:700;cursor:pointer;pointer-events:auto;">✓ Revive!</button>
     </div>
   </div>
@@ -3325,7 +3340,9 @@ function update(){
       } else {
         document.getElementById('goScreen').classList.add('active');
       }
-      if(_interstitial)showAd();
+      // (A death used to also fire a full-screen ad here, on top of the revive
+      // screen. H5 Games Ads forbids stacking them; the revive offer is the
+      // ad moment now.)
     },DEATH_MS+140);
   }
 }
@@ -6086,7 +6103,7 @@ function nextLevel(){
   dailyCheck();
   saveData();
   _sessionNoHit=true;_sessionRunCoins=0;_sessionParries=0;_prevLvlCoins=0;
-  if(!isPrem&&lvl%5===0)showAd(()=>{gState='playing';initLevel();});
+  if(!_noAds()&&lvl%MONEY.interstitialEvery===0)showAd(()=>{gState='playing';initLevel();});
   else{gState='playing';initLevel();}
 }
 function retryGame(){document.getElementById('goScreen').classList.remove('active');gState='playing';deaths4Ad=0;P.hp=P.maxHp;P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;combo=0;comboT=0;initLevel();}
@@ -6231,7 +6248,41 @@ function buyUpg(t){
 // game-ads SDK (CrazyGames, Poki, Ad Manager) is wired in.
 const ADS_INTERSTITIAL_ENABLED = false;
 
+// ════════════════════════════════════════════════════
+// MONETIZATION — hybrid: ads for players who haven't paid, none for those who have
+// ════════════════════════════════════════════════════
+// The web version of the AdMob + Analytics + Remote Config plan. Ads come
+// from AdSense H5 Games Ads (adBreak), which needs an approved AdSense
+// account AND H5 Games Ads access. Until both exist, h5 stays false and the
+// game behaves exactly as before. ?adtest=1 turns it on with Google's test
+// ads for checking placements.
+const MONEY={
+  h5:false,               // flip to true once H5 Games Ads access is granted
+  interstitialEvery:5,    // a between-stage break every N stage clears
+  rewardedRevive:true     // offer "watch an ad to revive" on the revive screen
+};
+if(/[?&]adtest=1/.test(location.search))MONEY.h5=true;
+// Anyone who has paid for anything never sees an ad. The starter bundle sets
+// isPrem as well, so these two flags cover every purchase.
+function _noAds(){return !!(isPrem||_hasSeason);}
+function _adsOn(){return MONEY.h5&&!_noAds()&&typeof adBreak==='function';}
+let _inAd=false;
+const _adHooks={
+  beforeAd(){_inAd=true;try{_musicTick();}catch(e){}if(SFXG&&AC)SFXG.gain.value=0;},
+  afterAd(){_inAd=false;if(SFXG&&AC)SFXG.gain.value=CFG.vol/100;try{_musicTick();}catch(e){}}
+};
+// Did the last adBreak actually show something? Reported in the counter so
+// fill rate is visible once ads go live.
+function _adResult(kind,info){try{_count('ad',{k:kind+'_'+((info&&info.breakStatus)||'none')});}catch(e){}}
+
 function showAd(cb){
+  // Between-stage break. H5 rules: only at natural pauses, never stacked on
+  // another full-screen ad. A stage clear is exactly that pause.
+  if(_adsOn()){
+    adBreak({type:'next',name:'stage-'+lvl,beforeAd:_adHooks.beforeAd,afterAd:_adHooks.afterAd,
+      adBreakDone:info=>{_adResult('next',info);if(cb)cb();}});
+    return;
+  }
   if(!ADS_INTERSTITIAL_ENABLED){ if(cb) cb(); return; }
   adCb=cb;adCD=5;
   const screen=document.getElementById('adScreen');
@@ -6319,7 +6370,7 @@ function patchSfx(){
 // Paused ducks the music; game over and a hidden tab stop it.
 function _musicTick(){
   try{
-    if(!CFG.music||document.hidden||gState==='gameover'){if(SVMusic.playing)SVMusic.stop();return;}
+    if(!CFG.music||document.hidden||gState==='gameover'||_inAd){if(SVMusic.playing)SVMusic.stop();return;}
     let want='dojo',boss=null;
     if(gState==='playing'||gState==='bossintro'||gState==='lvlcmp'){
       boss=enemies.find(e=>e.isBoss&&e.hp>0);
@@ -6794,9 +6845,29 @@ function showRewardAd(){
   if(!screen)return;
   screen.classList.add('active');
   claim.style.display='none';
+  const watch=document.getElementById('rewardWatchBtn');if(watch)watch.style.display='none';
+  // With ads on (and the player hasn't paid), revive is the reward for
+  // choosing to watch an ad. If no ad is available, it falls back to the free
+  // timed revive below, so nobody is ever stuck waiting on an ad that won't come.
+  if(_adsOn()&&MONEY.rewardedRevive){
+    let offered=false;
+    tmr.textContent='Checking for a revive...';
+    adBreak({type:'reward',name:'revive',beforeAd:_adHooks.beforeAd,afterAd:_adHooks.afterAd,
+      beforeReward:showAdFn=>{
+        offered=true;tmr.textContent='Watch a short ad to come back with 50% HP.';
+        if(watch){watch.style.display='block';watch.onclick=()=>{watch.style.display='none';showAdFn();};}
+      },
+      adViewed:()=>{closeRewardAd(true);},
+      adDismissed:()=>{tmr.textContent='Ad skipped, so no revive this time.';},
+      adBreakDone:info=>{_adResult('reward',info);if(!offered)_freeReviveTimer();}});
+    return;
+  }
+  _freeReviveTimer();
+}
+function _freeReviveTimer(){
+  const tmr=document.getElementById('rewardAdTmr'),claim=document.getElementById('rewardClaimBtn');
   _rewardAdCD=5;
   tmr.textContent='Preparing revival — 5 seconds...';
-  try{(window.adsbygoogle=window.adsbygoogle||[]).push({});}catch(e){}
   clearInterval(_rewardAdTimer);
   _rewardAdTimer=setInterval(()=>{
     _rewardAdCD--;
@@ -6820,6 +6891,10 @@ function closeRewardAd(revive){
     initLevel();
     notif('💚 Revived! Fight on!');
     _checkAch('kills',ST.kills); // trigger ach check
+  } else if(gState==='gameover'){
+    // "No thanks" used to close the revive screen and show nothing behind it,
+    // leaving the player on an empty screen with no way to retry.
+    document.getElementById('goScreen').classList.add('active');
   }
 }
 window.showRewardAd=showRewardAd; window.closeRewardAd=closeRewardAd;

@@ -133,6 +133,11 @@ function fieldFor(body) {
     const k = String(body.k || '');
     return SOCIAL_AT.has(k) ? 'soc_at_' + k : null;
   }
+  if (e === 'ad') {
+    // kind_status, e.g. next_viewed, reward_dismissed, next_notReady
+    const k = String(body.k || '');
+    return /^(next|reward)_[A-Za-z]{2,20}$/.test(k) ? 'ad_' + k : null;
+  }
   if (e === 'tut') {
     const k = String(body.k || '');
     return TUTS.has(k) ? 'tut_' + k : null;
