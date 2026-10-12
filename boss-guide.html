@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Samurai Vengeance Boss Guide — All 10 Bosses, Phase II and How to Win</title>
+<meta name="description" content="Every boss in Samurai Vengeance, which stages they guard, how much HP they have, what changes at Phase II, and the parry, dash and Ki timings that beat them. Numbers taken from the game code.">
+<link rel="canonical" href="https://samuraivengeance.com/boss-guide">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="Samurai Vengeance Boss Guide — All 10 Bosses, Phase II and How to Win">
+<meta property="og:description" content="Every boss in Samurai Vengeance, which stages they guard, how much HP they have, what changes at Phase II, and the parry, dash and Ki timings that beat them. Numbers taken from the game code.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://samuraivengeance.com/boss-guide">
+<meta property="og:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="theme-color" content="#0a0008">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"Article","headline":"Samurai Vengeance Boss Guide","description":"Every boss in Samurai Vengeance, which stages they guard, how much HP they have, what changes at Phase II, and the parry, dash and Ki timings that beat them. Numbers taken from the game code.","url":"https://samuraivengeance.com/boss-guide","image":"https://samuraivengeance.com/og-image.jpg","dateModified":"2026-10-12","author":{"@type":"Organization","name":"Billfiti Studios"},"publisher":{"@type":"Organization","name":"Billfiti Studios"}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--gold:#c9952a;--gold-lt:#fbbf24;--ink:#0a0008;--txt:rgba(236,214,168,.82);--dim:rgba(236,214,168,.52)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--ink);color:var(--txt);font-family:Georgia,'Times New Roman',serif;
+       line-height:1.7;font-size:16px;
+       background-image:radial-gradient(ellipse at 50% -10%,rgba(120,20,30,.22),transparent 60%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  header{border-bottom:1px solid rgba(201,149,42,.22);padding-bottom:18px;margin-bottom:30px}
+  .brand{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+         text-decoration:none;display:inline-block;margin-bottom:14px}
+  .brand:hover{color:var(--gold-lt)}
+  h1{font-size:clamp(25px,6vw,34px);color:#f0d9a0;line-height:1.22;margin-bottom:10px;font-weight:700}
+  .lede{color:var(--dim);font-size:15px}
+  h2{font-size:clamp(18px,4.2vw,21px);color:var(--gold-lt);margin:34px 0 10px;font-weight:700}
+  h3{font-size:16px;color:#e8d9b0;margin:22px 0 6px}
+  p{margin-bottom:14px}
+  ul,ol{margin:0 0 16px 22px}
+  li{margin-bottom:7px}
+  a{color:var(--gold-lt)}
+  strong{color:#e8d9b0}
+  table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+  th{color:var(--gold);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:400}
+  td:first-child{color:#e8d9b0;white-space:nowrap;padding-right:16px}
+  .play{display:inline-block;margin:26px 0 8px;padding:13px 26px;
+        background:linear-gradient(135deg,#7c4a00,#c9952a);color:#150c02;text-decoration:none;
+        border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid rgba(201,149,42,.18);
+         font-size:13px;color:var(--dim)}
+  footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
+  .note{font-size:13px;color:var(--dim);font-style:italic}
+  @media (max-width:520px){table{font-size:14px}th,td{padding:7px 6px}td:first-child{white-space:normal;padding-right:8px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <a class="brand" href="/">&#9876; Samurai Vengeance</a>
+  <h1>Boss guide</h1>
+  <p class="lede">All ten bosses, where they appear, how much health they carry, and exactly what changes when they hit Phase II. Every number on this page comes straight from the game's source code, not from guesswork.</p>
+</header>
+
+<p>Every tenth stage in Samurai Vengeance is a boss stage. There are 1000 stages, so there are 100 boss fights in a full run, shared between ten named bosses that each turn up ten times. A boss stage is just you, flat ground and one large enemy with a health bar across the top of the screen. There are no platforms to hide on, and no stage modifier ever lands on a boss stage, so the fight is always the same test: can you read one opponent and punish it.</p>
+
+<p>This guide covers the roster first, then the fight itself, then the habits that make the difference between scraping through stage 10 and clearing stage 1000.</p>
+
+<h2>The roster</h2>
+<p>The ten bosses rotate in a fixed order. Stage 10 is always the Iron Oni, stage 20 the Shadow Twin, and so on up to Death Itself at stage 100. Then the cycle starts again at stage 110. The HP column shows each boss on its first appearance; every later appearance has more.</p>
+<table>
+<tr><th>Boss</th><th>Title</th><th>Stages</th><th>First HP</th></tr>
+<tr><td>Iron Oni</td><td>Warden of the First Gate</td><td>10, 110, 210 &hellip; 910</td><td>1,150</td></tr>
+<tr><td>Shadow Twin</td><td>Slayer of Apprentices</td><td>20, 120, 220 &hellip; 920</td><td>1,400</td></tr>
+<tr><td>Blood Shogun</td><td>Lord of the Crimson Keep</td><td>30, 130, 230 &hellip; 930</td><td>1,650</td></tr>
+<tr><td>Jade Serpent</td><td>Coiled Death of the East</td><td>40, 140, 240 &hellip; 940</td><td>1,900</td></tr>
+<tr><td>Storm Daimyo</td><td>Herald of Thunder Blades</td><td>50, 150, 250 &hellip; 950</td><td>2,150</td></tr>
+<tr><td>Void Ronin</td><td>The Masterless Abyss</td><td>60, 160, 260 &hellip; 960</td><td>2,400</td></tr>
+<tr><td>Ghost Emperor</td><td>Ruler of Dead Dynasties</td><td>70, 170, 270 &hellip; 970</td><td>2,650</td></tr>
+<tr><td>Inferno Tengu</td><td>Wings of Scorched Heaven</td><td>80, 180, 280 &hellip; 980</td><td>2,900</td></tr>
+<tr><td>Titan Samurai</td><td>The Last Undefeated</td><td>90, 190, 290 &hellip; 990</td><td>3,150</td></tr>
+<tr><td>Death Itself</td><td>Beyond All Legend</td><td>100, 200, 300 &hellip; 1000</td><td>3,400</td></tr>
+</table>
+<p class="note">Earlier builds of the game stopped the rotation at Death Itself, which meant every boss from stage 100 to 1000 was the same fight 91 times in a row. The rotation was added to fix that, so if you remember facing nothing but Death Itself late in a run, that is why.</p>
+
+<h3>Do the bosses fight differently?</h3>
+<p>Honestly, no, not yet. Each boss has its own name, title and artwork, but all ten share the same attack pattern and the same rules. What makes a later boss harder is its health pool and, in the last stretch of the game, its speed. That is actually good news for you: once you have learned one boss properly, you have learned all of them, and everything below applies to every fight.</p>
+
+<h2>How much health a boss has</h2>
+<p>Boss HP is <strong>900 + 25 &times; the stage number</strong>. It goes up in a straight line, so a boss late in the game is a long fight rather than a different one.</p>
+<table>
+<tr><th>Stage</th><th>Boss HP</th><th>Phase II starts at</th></tr>
+<tr><td>Stage 10</td><td>1,150</td><td>575</td></tr>
+<tr><td>Stage 50</td><td>2,150</td><td>1,075</td></tr>
+<tr><td>Stage 100</td><td>3,400</td><td>1,700</td></tr>
+<tr><td>Stage 250</td><td>7,150</td><td>3,575</td></tr>
+<tr><td>Stage 500</td><td>13,400</td><td>6,700</td></tr>
+<tr><td>Stage 750</td><td>19,650</td><td>9,825</td></tr>
+<tr><td>Stage 1000</td><td>25,900</td><td>12,950</td></tr>
+</table>
+<p>For scale: at Damage level 1 your basic swing does 52 before combo bonuses, and at Damage level 5 it does 100. The stage 10 Iron Oni can be beaten by hand without any upgrades. The stage 500 boss, at 13,400 HP, really needs your combo multiplier built up and your Ki special saved for it.</p>
+
+<h2>Phase I</h2>
+<p>A boss walks back and forth across the arena, turning around when it reaches either side. It does two things:</p>
+<ul>
+<li><strong>It shoots at you.</strong> About once every 1.1 seconds it fires a single projectile aimed straight at where you are standing at that moment. The first shot comes roughly a second after the fight starts.</li>
+<li><strong>It hurts you on contact.</strong> Touching a boss deals 2.2 times the normal enemy hit and throws you backwards. On Normal difficulty that is about 26 damage; you start with 100 HP, so four touches end the run.</li>
+</ul>
+<p>The contact damage has one big gap: it only counts when you and the boss are both standing on the ground at the same height. <strong>If you are in the air, the boss's body cannot hurt you.</strong> Jumping over a boss as it walks toward you is completely safe, and landing behind it gives you free hits on its back while it walks away.</p>
+
+<h2>Phase II</h2>
+<p>When a boss drops below half its health, the screen shakes, the name bar gains <em>&mdash; PHASE II</em> and three things change at once:</p>
+<ul>
+<li>It moves <strong>60% faster</strong>.</li>
+<li>It shoots almost <strong>twice as often</strong>, about every 0.6 seconds instead of every 1.1.</li>
+<li>Each volley is <strong>three projectiles</strong> in a fan, one aimed at you and one about 20&deg; either side, and each travels 60% faster than before.</li>
+</ul>
+<p>The fan matters most. In Phase I a small step sideways or a jump is enough to dodge a shot. In Phase II the outer two shots cover the space you would normally dodge into, so moving away is less reliable than parrying or dashing through.</p>
+
+<h2>Damage by difficulty</h2>
+<table>
+<tr><th>Difficulty</th><th>Contact hit</th><th>Projectile hit</th><th>Projectile speed</th></tr>
+<tr><td>Easy</td><td>~9</td><td>~2</td><td>Slow</td></tr>
+<tr><td>Normal</td><td>~26</td><td>~7</td><td>Medium</td></tr>
+<tr><td>Hard</td><td>44</td><td>11</td><td>Fast</td></tr>
+</table>
+<p>A projectile does about a quarter of what a body hit does. If you have to choose between eating a shot and touching the boss, take the shot.</p>
+
+<h2>Parrying a boss</h2>
+<p>The parry is the most important tool in a boss fight, because it is the only thing that both protects you and speeds the fight up.</p>
+<h3>Parrying the body</h3>
+<p>Parry just as the boss walks into you and it bounces off and turns around. You take no damage, your combo counter jumps by 5, and you get a <strong>Punish</strong>.</p>
+<h3>Parrying a projectile</h3>
+<p>Parrying a shot destroys it, adds 3 to your combo and also gives you a Punish. In Phase II you can parry the whole three-shot fan if they reach you together.</p>
+<h3>What Punish does</h3>
+<p>For a little under a second after a successful parry, your next swing skips straight to the Finisher, the third and heaviest hit of the combo, which does double damage. Normally you have to land two hits to reach it. Parry, then swing immediately: that rhythm is how you take big chunks off a late-game boss.</p>
+<h3>Timing and cooldown</h3>
+<p>At Parry level 1 the parry window is about 0.17 seconds. Each Dojo upgrade adds about 0.05 seconds, so Parry level 5 gives you roughly 0.37 seconds, more than double. After a parry there is a cooldown of just under a second. If you have at least 30 Ki you can parry again during the cooldown; this is the <em>Ki Parry</em>, and it costs those 30 Ki.</p>
+
+<h2>Dashing</h2>
+<p>A dash makes you briefly invincible: about a quarter of a second at Dash level 1, rising to 0.4 seconds at level 5, with a 0.7 second cooldown. Use it to go <em>through</em> a boss or a projectile fan rather than away from it. Dashing through a boss also leaves you behind it, the same as jumping over.</p>
+
+<h2>Combo and the Ki special</h2>
+<p>Each hit you land raises your combo counter, and your damage grows with it: +6% per combo point, up to a cap of 2.8&times; at a combo of 30. Parries add combo as well, so a fight with a lot of parrying ramps up faster than one with only swings. The combo resets if you go too long without landing something.</p>
+<p>Your Ki bar fills as you land hits, and a Finisher that kills something adds an extra 15. When it is full, the Ki special hits every enemy on screen for <strong>500 + 80 per Damage level</strong>, so 580 at level 1 and 900 at level 5, and briefly freezes time. Two things to know:</p>
+<ul>
+<li><strong>It does fixed damage.</strong> It does not get stronger with combo, so it is worth relatively more against the stage 10 boss (half its health) than the stage 1000 boss (about 3%).</li>
+<li><strong>It resets your combo chain.</strong> Use it at the end of a long combo and you lose the multiplier you built.</li>
+</ul>
+<p>The best use is usually to save it for Phase II. The second half of the fight is where you take damage, so cutting it short is worth more than speeding up the safe first half. Early in the game it can also be used to skip most of Phase II outright.</p>
+
+<h2>A plan that works</h2>
+<ol>
+<li><strong>Open on the ground, facing the boss.</strong> Wait for the first shot and parry it. You now have a Punish.</li>
+<li><strong>Use the Punish straight away</strong> on the boss's body, then keep swinging while it is in range.</li>
+<li><strong>When it walks into you, either parry it or jump over it.</strong> Parry if you are confident of the timing, since it builds combo. Jump if you are low on health.</li>
+<li><strong>Watch the health bar approach half.</strong> It changes colour once the boss passes the halfway mark. Get your Ki full before then if you can.</li>
+<li><strong>In Phase II, stop dodging sideways.</strong> Parry or dash through each fan, and use your Ki special to finish.</li>
+</ol>
+
+<h2>The last 150 stages</h2>
+<p>From stage 851 onward bosses start walking faster even in Phase I, and the increase keeps growing until stage 1000, where a boss moves two and a half times faster than the stage 10 Iron Oni. Phase II multiplies that speed again. At that pace, jumping over a boss gets harder to time and a parry is usually the more reliable answer. By this point you will want Parry and Health close to level 5.</p>
+
+<h2>The Daily Boss</h2>
+<p>Separate from the stage bosses, the main menu offers a <strong>Daily Boss</strong> once per day. It follows the same Phase I and Phase II rules but scales differently: its health is based on the highest stage you have reached and on your Damage level, and it is doubled on top of that, so it stays tough however far you have progressed. Beating it pays <strong>500 coins plus 50 for every ten stages</strong> you have reached, far more than a normal stage. It uses your device's date, so it resets at local midnight.</p>
+
+<h2>Boss achievements</h2>
+<table>
+<tr><th>Achievement</th><th>Requirement</th></tr>
+<tr><td>Boss Slayer</td><td>Defeat your first boss. 200 coins.</td></tr>
+<tr><td>Dragon Hunter</td><td>Defeat 10 bosses. 500 coins.</td></tr>
+<tr><td>Perfect Hunter</td><td>Defeat a boss without taking any damage. 500 coins.</td></tr>
+</table>
+<p>Perfect Hunter is easiest on the stage 10 Iron Oni. Open with a parry, jump over every approach and save the Ki special for the moment it enters Phase II; at Damage level 1 the special does 580 and the boss enters Phase II with at most 574 left, so one special ends the fight on the spot.</p>
+
+<h2>Upgrades worth buying for bosses</h2>
+<p>The Dojo has five upgrades, each up to level 5. For boss fights specifically:</p>
+<ul>
+<li><strong>Parry</strong> more than doubles the parry window. Most of the advice above depends on landing parries, so this one matters most.</li>
+<li><strong>Health</strong> adds 20 max HP per level, so at level 5 you can survive six body hits on Normal instead of three.</li>
+<li><strong>Ki</strong> fills the special faster, which means more specials per fight on the long late-game bosses.</li>
+<li><strong>Damage</strong> raises both your swing and your Ki special. Worth it, but it does less for survival than the three above.</li>
+<li><strong>Dash</strong> lengthens the invincibility window, which helps most once Phase II gets fast.</li>
+</ul>
+
+<p>Controls and the regular enemies are covered in <a href="/how-to-play">How to Play</a>. For how the game is built, including why it once ran at double speed on 120Hz phones, see the <a href="/devlog">Dev Notes</a>.</p>
+
+<a class="play" href="/">Play the game</a>
+<footer><a href="/">Play</a><a href="/how-to-play">How to Play</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+</div>
+</body>
+</html>

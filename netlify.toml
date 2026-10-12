@@ -71,6 +71,12 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/boss-guide.html"
+  to = "/boss-guide"
+  status = 301
+  force = true
+
 # index.html is the game itself; send it to the bare root for the same reason.
 [[redirects]]
   from = "/index.html"
