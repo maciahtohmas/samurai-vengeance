@@ -131,19 +131,20 @@
 # never see a fix. Netlify matches header rules against the REQUEST path, and
 # almost every visitor asks for "/" rather than "/index.html", so scoping this
 # to /index.html alone left the main URL cacheable. Both are listed.
+# "no-cache" still makes the browser check for a new version on EVERY visit,
+# so nobody sits on an old build. It used to also say "no-store", which threw
+# the copy away and re-downloaded all ~600 KB each time even when nothing had
+# changed. Netlify bandwidth is metered against the monthly credits, and a
+# revalidated visit costs a few hundred bytes instead.
 [[headers]]
   for = "/"
   [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
-    Pragma = "no-cache"
-    Expires = "0"
+    Cache-Control = "no-cache"
 
 [[headers]]
   for = "/index.html"
   [headers.values]
-    Cache-Control = "no-cache, no-store, must-revalidate"
-    Pragma = "no-cache"
-    Expires = "0"
+    Cache-Control = "no-cache"
 
 [[headers]]
   for = "/ads.txt"
