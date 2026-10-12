@@ -1078,7 +1078,7 @@ canvas{
 <!-- ══ GDPR CONSENT BANNER ══ -->
 <!-- Tutorial coach: one instruction at a time, see _checkTutorialPrompt -->
 <div id="tutCoach" role="status" aria-live="polite">
-  <div class="tc-step" id="tutCoachStep">Step 1 of 5</div>
+  <div class="tc-step" id="tutCoachStep">Step 1 of 6</div>
   <div class="tc-txt" id="tutCoachTxt"></div>
   <div class="tc-hint" id="tutCoachHint" style="display:none"></div>
   <button class="tc-skip" id="tutCoachSkip" onclick="tutSkip()">Skip tutorial</button>
@@ -2001,8 +2001,9 @@ window.addEventListener('keydown',e=>{
   keys[e.code]=true;
   if(e.code==='Space'||e.code==='KeyZ')doAtk();
   if(e.code==='ArrowUp'||e.code==='KeyW')doJump();
-  if(e.code==='ShiftLeft'||e.code==='KeyL')doDash();
-  if(e.code==='KeyX')doSpc();
+  // Either Shift. Only the left one was bound, so a right-hand Shift did nothing.
+  if(e.code==='ShiftLeft'||e.code==='ShiftRight'||e.code==='KeyL')doDash();
+  if(e.code==='KeyX'){if(P.focus<P.maxFocus)_kiNotReady();else doSpc();}
   if((e.code==='KeyS'||e.code==='KeyQ')&&!_parryHeld){_parryHeld=true;doParry();}
   // CrazyGames' requirements name Escape as a key to avoid: it exits THEIR
   // fullscreen, so binding it means one press both leaves fullscreen and
@@ -2505,6 +2506,14 @@ function doParry(){
     updateHUD();
   }
   if(typeof onParry==='function')onParry();
+}
+// X before the bar is full used to do nothing at all, which reads as a broken
+// key. Throttled so holding it does not stack floats.
+let _kiNagT=0;
+function _kiNotReady(){
+  if(gState!=='playing'||paused||performance.now()-_kiNagT<900)return;
+  _kiNagT=performance.now();
+  addFloat(P.x+P.w/2,P.y-30,'KI NOT READY','#94a3b8');
 }
 function doSpc(){
   if(P.focus>=P.maxFocus&&gState==='playing'&&!paused){
@@ -7161,6 +7170,11 @@ const TUT_STEPS=[
            'An arrow is coming. Hold the shield just before it reaches you. It lights up when the timing is right.'),
    begin:()=>({}), done:()=>P.punishT>0,
    hint:()=>_tutHint},
+  {id:'dash', btn:['bDash'],
+   text:_T('Dash with <kbd>Shift</kbd> or <kbd>L</kbd>. You can’t be hurt while dashing.',
+           'Tap the lightning button to dash. You can’t be hurt while dashing.'),
+   begin:()=>({}), done:()=>P.dash,
+   hint:t=>t>60*8?_T('Either Shift key works. <kbd>X</kbd> is something else: your Ki special.','The lightning button is at the bottom right, next to the sword.')():''},
   {id:'clear', btn:[],
    text:()=>{
      const n=enemies.filter(e=>e.hp>0).length;
@@ -7170,8 +7184,8 @@ const TUT_STEPS=[
    hint:t=>t>60*20?'Look up. Some are on the higher platforms.':''}
 ];
 const TUT_OUTRO=_T(
-  'You’re ready. <kbd>Shift</kbd> dashes, and when the Ki bar fills, <kbd>X</kbd> hits everything on screen at once.',
-  'You’re ready. The lightning button dashes, and when the Ki bar fills, a burst button appears that hits everything on screen at once.');
+  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, press <kbd>X</kbd> to hit everything on screen at once.',
+  'You’re ready. One more thing: landing hits fills your Ki bar. When it’s full, a burst button appears. Tap it to hit everything on screen at once.');
 
 function _tutEl(){return document.getElementById('tutCoach');}
 function _tutCalm(){return _tutActive&&_coachIdx<TUT_STEPS.length&&!!TUT_STEPS[_coachIdx].calm;}
