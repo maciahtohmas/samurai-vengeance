@@ -2058,7 +2058,20 @@ function bt(id,k,fn,hap=12){
   const el=document.getElementById(id);if(!el)return;
   el.addEventListener('touchstart',e=>{e.preventDefault();keys[k]=true;if(hap)_haptic(hap);if(fn)fn();},{passive:false});
   el.addEventListener('touchend',e=>{e.preventDefault();keys[k]=false;},{passive:false});
+  // A call or system gesture cancels the touch without a touchend, which left
+  // the key held: the samurai ran on his own, or ▼ dropped through every ledge.
+  el.addEventListener('touchcancel',()=>{keys[k]=false;});
 }
+// Same for the keyboard when the window loses focus mid-press (alt-tab).
+function _releaseKeys(){for(const k in keys)keys[k]=false;_parryHeld=false;}
+addEventListener('blur',_releaseKeys);
+document.addEventListener('visibilitychange',()=>{
+  if(!document.hidden)return;
+  _releaseKeys();
+  // Coming back to a game that is already running gets you killed before you
+  // see it. Pause instead.
+  if(gState==='playing'&&!paused&&!_panelPaused.size)doPause();
+});
 bt('bLeft','ArrowLeft',null,0);bt('bRight','ArrowRight',null,0);bt('bDown','ArrowDown',null,0);
 bt('bJump','ArrowUp',doJump);bt('bAtk','KeyZ',doAtk);bt('bSpc','KeyX',doSpc);
 bt('bDash','ShiftLeft',doDash,18);bt('bParry','KeyQ',doParry,10);
@@ -2612,7 +2625,7 @@ function modDmg(v){return levelMod==='glass'?v*2:v;}
 
 // ═══════════════════════════════════════════════════════
 function initLevel(){
-  _inDailyBossRun=false;
+  _inDailyBossRun=false;_lastRunDaily=false;
   // Only nextLevel() used to hide the boss bar, so jumping from a boss stage to
   // another stage by stage select or the menu left a dead boss's bar on screen.
   // updateBoss() shows it again on the first frame of a real boss stage.
@@ -3307,6 +3320,7 @@ function update(){
   }
   if(P.hp<=0&&gState==='playing'){
     _devApplyGodMode();if(_devGodMode)return;
+    _lastRunDaily=_inDailyBossRun;
     _inDailyBossRun=false;
     P.hp=0;gState='gameover';sfx.die();P.comboStep=0;P.comboWindow=0;P.punishT=0;P.atk=false;
     P.parry=false;
@@ -3325,7 +3339,7 @@ function update(){
     // These two are evaluated before deaths4Ad is touched: the original read
     // `deaths4Ad>0` BEFORE the increment, and deferring the read without
     // deferring the increment would offer a revive on the very first death.
-    const _offerRevive=!isPrem&&deaths4Ad>0&&lvl>5;
+    const _offerRevive=!isPrem&&deaths4Ad>0&&lvl>5&&!_lastRunDaily;
     deaths4Ad++;
     const _interstitial=!isPrem&&deaths4Ad>=3;
     if(_interstitial)deaths4Ad=0;
@@ -6028,7 +6042,10 @@ function continueGame(){
   if(highestLvl<=1){startGame(diff||'normal');return;}
   // Restore last session: keep diff, restore level, full HP
   gState='playing';paused=false;maxCombo=0;
-  coins=0;deaths4Ad=0;
+  // coins is the saved shop balance, not a per-run count (that is lvlCoins
+  // and _sessionRunCoins). Zeroing it here wiped unspent coins, including the
+  // 500 from a paid Starter Bundle, every time a run started.
+  deaths4Ad=0;
   _sessionNoHit=true;_sessionRunCoins=0;_sessionParries=0;_prevLvlCoins=0;
   document.getElementById('menu').classList.remove('active');
   document.getElementById('hud').style.display='block';
@@ -6073,7 +6090,7 @@ function startGame(d, fromLvl){
   saveData();
   _count('start',{d:diff});
   _count('s_start',{v:lvl});
-  coins=0;deaths4Ad=0;
+  deaths4Ad=0;   // coins kept: see continueGame
   // Stats reset for new game
   ST.gamesPlayed++;
   _sessionNoHit=true;_sessionRunCoins=0;_sessionParries=0;_prevLvlCoins=0;
@@ -6106,7 +6123,9 @@ function nextLevel(){
   if(!_noAds()&&lvl%MONEY.interstitialEvery===0)showAd(()=>{gState='playing';initLevel();});
   else{gState='playing';initLevel();}
 }
-function retryGame(){document.getElementById('goScreen').classList.remove('active');gState='playing';deaths4Ad=0;P.hp=P.maxHp;P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;combo=0;comboT=0;initLevel();}
+function retryGame(){document.getElementById('goScreen').classList.remove('active');
+  if(_lastRunDaily){_lastRunDaily=false;startDailyBoss();return;}
+  gState='playing';deaths4Ad=0;P.hp=P.maxHp;P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;combo=0;comboT=0;initLevel();}
 function goMenu(){
   saveData(); // persist progress before going to menu
   _releaseWakeLock();
@@ -6134,6 +6153,9 @@ function goMenu(){
 }
 function doPause(){
   if(gState==='menu'||gState==='gameover'||gState==='lvlcmp'||gState==='bossintro')return;
+  // A popup opened mid-stage already paused the game. Toggling here un-paused
+  // it with the popup still up, so enemies hit you behind it. Close the popup.
+  if(_panelPaused.size){closeP([..._panelPaused].pop());return;}
   paused=!paused;
   document.getElementById('pauseScreen').classList.toggle('active',paused);
   document.getElementById('pauseBtn').textContent=paused?'▶':'❙❙';
@@ -6160,7 +6182,13 @@ function openCust(){
 function setColor(c){styleKey=c;saveData();closeP('custP');notif('Style updated!');}
 async function buyPrem(){
   if(isPrem){notif('You already have Premium ⭐');return;}
-  if(!_user){notif('Sign in first to purchase Premium');openP('authScreen');return;}
+  // openP('authScreen') raised the auth overlay with its card hidden, a black
+  // screen with nothing to tap. openSignIn shows the actual form.
+  if(!_user){
+    notif('Sign in first to purchase Premium');
+    if(gState==='menu'){closeP('premP');openSignIn();}
+    return;
+  }
   // Relative path — the endpoint is a Netlify Function on this same site
   // (see netlify.toml). Same-origin, so there is no CORS to configure and
   // no deployment hostname to keep in sync.
@@ -6188,7 +6216,7 @@ async function buyPrem(){
   } catch(e){
     notif('Could not connect to payment server');
   } finally {
-    if(btn){btn.textContent='Buy Premium — $2.99';btn.disabled=false;}
+    if(btn){btn.textContent='Unlock Premium · $2.99';btn.disabled=false;}
   }
 }
 async function _cloudLoad(){
@@ -6982,6 +7010,9 @@ let _dailyBossDefeated=false;
 // numbered stage, so clearing it must not run the stage-complete path —
 // that incremented lvl and highestLvl and handed out a free stage skip.
 let _inDailyBossRun=false;
+// Was the run that just ended the Daily Boss? Retry and revive use it so they
+// don't drop the player into whatever regular stage lvl still points at.
+let _lastRunDaily=false;
 
 function _getDailyBossKey(){
   const d=new Date();
@@ -8293,14 +8324,24 @@ async function _onSignedIn(user){
     if(snap.exists()){
       const d=snap.data();
       // Only overwrite if cloud is newer / better
+      // Paid status never goes backwards. It used to be taken from the cloud
+      // only when the cloud save was further along, so signing in on a device
+      // that had played further as a guest kept isPrem false and the next save
+      // wrote that false over the purchase.
+      isPrem=isPrem||!!d.isPrem||!!d.starterClaimed;
       if((d.highestLvl||0)>=highestLvl){
-        highestLvl=d.highestLvl||1;styleKey=d.styleKey||'blue';isPrem=d.isPrem||false;
+        highestLvl=d.highestLvl||1;styleKey=d.styleKey||'blue';
         coins=d.coins||0;hpLvl=d.hpLvl||1;dmgLvl=d.dmgLvl||1;sprLvl=d.sprLvl||1;dshLvl=d.dshLvl||1;pryLvl=d.pryLvl||1;
       }
       if(d.stats){Object.keys(d.stats).forEach(k=>{if((d.stats[k]||0)>(ST[k]||0))ST[k]=d.stats[k];});}
     }
     updateHUD();const pn=document.getElementById('profName');if(pn)pn.textContent=user.displayName||'Warrior';notif(`Welcome back, ${user.displayName||'Warrior'}! ⚔️`);
     _syncPendingFeedback();
+    // Season Pass, Starter perks and renewals live in Firestore (written by
+    // the Stripe webhook). Reading them only on the return from checkout
+    // meant a second device, a cleared browser or a monthly renewal never
+    // picked them up.
+    await _cloudLoad();
   }catch(e){notif('Signed in ✓ (cloud sync unavailable)');}
 }
 
@@ -8667,16 +8708,26 @@ requestAnimationFrame(()=>{
     const cancel=params.get('payment_cancel');
     if(success){
       history.replaceState({},'',location.pathname);
-      setTimeout(async()=>{
+      // Sign-in restore and the Stripe webhook both take a moment, longer on
+      // a slow phone. Check every 2s for up to 30s until the purchase shows up.
+      const granted=()=>success==='season'?_hasSeason:isPrem;
+      let tries=0;
+      const check=async()=>{
+        tries++;
         if(_fbReady&&_user){
           await _cloudLoad();
-          if(success==='premium') notif('🎉 Premium activated! Ads removed forever. ⭐');
-          if(success==='starter') notif('🎉 Starter Bundle activated! +500 coins + Bronze skin. ⭐');
-          if(success==='season')  notif('🎉 Season Pass activated! Double coins this month. ⚡');
-        } else {
-          notif('🎉 Payment received! Sign in to activate your purchase.');
+          if(granted()){
+            if(success==='premium') notif('🎉 Premium activated! Ads removed forever. ⭐');
+            if(success==='starter') notif('🎉 Starter Bundle activated! +500 coins + Bronze skin. ⭐');
+            if(success==='season')  notif('🎉 Season Pass activated! Double coins this month. ⚡');
+            return;
+          }
         }
-      },2500);
+        if(tries<15){setTimeout(check,2000);return;}
+        notif(_user?'🎉 Payment received! It can take a minute to show up. Reload the page if it hasn’t.'
+                   :'🎉 Payment received! Sign in to activate your purchase.');
+      };
+      setTimeout(check,2500);
     }
     if(cancel){
       history.replaceState({},'',location.pathname);
