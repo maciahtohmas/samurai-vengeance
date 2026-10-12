@@ -232,11 +232,16 @@ exports.handler = async (event) => {
     if (stripeEvent.type === 'invoice.paid') {
       const invoice = stripeEvent.data.object;
       // One-off invoices carry no subscription — guard before retrieving.
-      if (invoice.subscription) {
-        const sub = await stripe.subscriptions.retrieve(invoice.subscription);
+      // Stripe API versions from 2025-03-31 moved the id under
+      // parent.subscription_details; payloads follow the endpoint's version.
+      const subId = invoice.subscription ||
+        (invoice.parent && invoice.parent.subscription_details &&
+         invoice.parent.subscription_details.subscription);
+      if (subId) {
+        const sub = await stripe.subscriptions.retrieve(subId);
         const userId = sub.metadata && sub.metadata.userId;
-        if (userId) await grantSeason(db, userId, invoice.subscription);
-        else console.log('No userId on subscription', invoice.subscription);
+        if (userId) await grantSeason(db, userId, subId);
+        else console.log('No userId on subscription', subId);
       }
     }
 
