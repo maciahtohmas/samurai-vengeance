@@ -113,6 +113,24 @@
   status = 301
   force = true
 
+[[redirects]]
+  from = "/beginners-guide.html"
+  to = "/beginners-guide"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/parry-guide.html"
+  to = "/parry-guide"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/best-samurai-browser-games.html"
+  to = "/best-samurai-browser-games"
+  status = 301
+  force = true
+
 # index.html is the game itself; send it to the bare root for the same reason.
 [[redirects]]
   from = "/index.html"
