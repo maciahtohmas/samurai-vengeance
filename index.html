@@ -962,7 +962,7 @@ canvas{
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Jump / Double Jump</td><td style="padding:5px 4px;color:#fff;">↑ / W &nbsp;(tap twice)</td></tr>
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Attack</td><td style="padding:5px 4px;color:#fff;">Space / Z</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Dash</td><td style="padding:5px 4px;color:#fff;">Shift / L</td></tr>
-        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Parry</td><td style="padding:5px 4px;color:#fff;">Q / E &nbsp;(hold)</td></tr>
+        <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Parry</td><td style="padding:5px 4px;color:#fff;">Q / E &nbsp;(tap)</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Ki Special</td><td style="padding:5px 4px;color:#fff;">X &nbsp;(when bar is full)</td></tr>
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Drop through</td><td style="padding:5px 4px;color:#fff;">Hold S / ↓</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">Pause</td><td style="padding:5px 4px;color:#fff;">Escape</td></tr>
@@ -976,7 +976,7 @@ canvas{
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);width:40%;">▲ Jump</td><td style="padding:5px 4px;color:#fff;">Tap twice for double jump</td></tr>
         <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">⚔ Attack</td><td style="padding:5px 4px;color:#fff;">Tap to slash</td></tr>
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">💨 Dash</td><td style="padding:5px 4px;color:#fff;">Quick invincible dash</td></tr>
-        <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">🛡 Parry</td><td style="padding:5px 4px;color:#fff;">Hold to deflect attacks</td></tr>
+        <tr style="background:rgba(255,255,255,.03);"><td style="padding:5px 4px;color:rgba(255,255,255,.4);">🛡 Parry</td><td style="padding:5px 4px;color:#fff;">Tap to deflect attacks</td></tr>
         <tr><td style="padding:5px 4px;color:rgba(255,255,255,.4);">💥 Ki</td><td style="padding:5px 4px;color:#fff;">Shows when Ki bar is full</td></tr>
       </table>
     </div>
@@ -7402,8 +7402,8 @@ const TUT_STEPS=[
   // A parry only grants a Punish when it actually connects, so that is the
   // test. ST.parries counts button presses and would pass on a whiff.
   {id:'parry', btn:['bParry'], arrows:true,
-   text:_T('An arrow is coming. Hold <kbd>Q</kbd> or <kbd>E</kbd> just before it reaches you to parry it.',
-           'An arrow is coming. Hold the shield just before it reaches you. It lights up when the timing is right.'),
+   text:_T('An arrow is coming. Press <kbd>Q</kbd> or <kbd>E</kbd> just before it reaches you to parry it.',
+           'An arrow is coming. Tap the shield just before it reaches you. It lights up when the timing is right.'),
    begin:()=>({}), done:()=>P.punishT>0,
    hint:()=>_tutHint},
   {id:'dash', btn:['bDash'],
@@ -7492,7 +7492,7 @@ function _tutFireArrow(){
 }
 // A practice arrow reached the player without being parried.
 function _tutArrowMissed(){
-  _tutHint='Too late. Hold it as the arrow gets close, before it touches you.';
+  _tutHint='Too late. Press it as the arrow gets close, before it touches you.';
   shake(4);
 }
 // Called every update() tick.
@@ -7526,7 +7526,7 @@ function _checkTutorialPrompt(){
     if(P.parry&&!_tutPrevParry){
       const a=projs.find(q=>q.tut&&!q.done);
       if(a&&Math.hypot(a.x-(P.x+P.w/2),a.y-(P.y+P.h/2))>CUE_PROJ)
-        _tutHint='Too early. Wait until the arrow is close, then hold the shield.';
+        _tutHint='Too early. Wait until the arrow is close, then tap the shield.';
     }
     _tutPrevParry=P.parry;
   }
