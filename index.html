@@ -75,8 +75,12 @@
      STILL OUTSTANDING: the two ad units below carry a placeholder
      data-ad-slot. Create the units at adsense.google.com and paste the
      real slot IDs in, or those two slots render nothing. -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5183339731726250" data-ad-frequency-hint="120s" crossorigin="anonymous"></script>
 <script>
+// The AdSense library used to load here for every visitor, before the consent
+// bar was answered. It now loads only after Accept (see _loadAdSense below):
+// Google requires consent before its ad tag runs for visitors in the EEA, UK
+// and Switzerland. The google-adsense-account meta tag above still verifies
+// the site with AdSense.
 // AdSense H5 Games Ads (Google's ad-break API for web games, the browser
 // counterpart of AdMob interstitials and rewarded ads). adBreak/adConfig
 // only queue onto adsbygoogle; nothing is requested unless MONEY.h5 is on.
@@ -85,9 +89,16 @@
 // this runs inline right after it.
 window.adsbygoogle=window.adsbygoogle||[];
 var adBreak=adConfig=function(o){adsbygoogle.push(o);};
-if(/[?&]adtest=1/.test(location.search)){
-  var _ag=document.querySelector('script[src*="adsbygoogle"]');
-  if(_ag)_ag.setAttribute('data-adbreak-test','on');
+var _adsLoaded=false;
+function _loadAdSense(){
+  if(_adsLoaded)return; _adsLoaded=true;
+  var t=document.createElement('script');
+  t.async=true; t.crossOrigin='anonymous';
+  t.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5183339731726250';
+  t.setAttribute('data-ad-frequency-hint','120s');
+  // ?adtest=1 switches to Google's fake test ads for checking placements.
+  if(/[?&]adtest=1/.test(location.search))t.setAttribute('data-adbreak-test','on');
+  document.head.appendChild(t);
 }
 </script>
 
@@ -1078,13 +1089,9 @@ canvas{
     <button class="pclose" onclick="closeP('privacyP')">×</button>
     <h2 style="font-size:15px">Privacy Policy</h2>
     <div class="legal-text">
-      <p><strong>Last updated: 2025</strong></p>
-      <p><strong>Data We Collect:</strong> Email address, display name, gameplay statistics (stage reached, kills, playtime, coins earned, combo scores), device type. We do not collect payment information directly.</p>
-      <p><strong>How We Use It:</strong> To save game progress across devices, display your rank on the global leaderboard, and personalise daily challenges. We do not sell your data to third parties, ever.</p>
-      <p><strong>Third-Party Services:</strong> Firebase (Google) for authentication and data storage. Google and Apple for OAuth sign-in. Their respective privacy policies apply.</p>
-      <p><strong>Your Rights (GDPR / CCPA):</strong> You may request export of your data, correction of inaccurate data, or complete deletion of your account and all associated data at any time via Profile → Delete Account.</p>
-      <p><strong>Data Retention:</strong> Retained while your account is active. On deletion all Firestore documents are permanently removed within 30 days.</p>
-      <p><strong>Cookies:</strong> We use localStorage only to remember your consent choice and local game progress. No third-party tracking cookies.</p>
+      <p>The full, current policy is at <a href="/privacy" target="_blank" rel="noopener" style="color:#fbbf24">samuraivengeance.com/privacy</a>.</p>
+      <p><strong>In short:</strong> guests' progress stays on their device. An anonymous visit counter (no cookies, no IDs) runs for everyone. Analytics and ads only run if you accept the consent bar. An account stores your email, display name and game stats so your progress syncs. We never sell your data.</p>
+      <p><strong>Your data:</strong> Export it under Settings, delete your account under Profile, or email us.</p>
       <p><strong>Contact:</strong> contact@samuraivengeance.com</p>
     </div>
   </div>
@@ -1119,7 +1126,7 @@ canvas{
 </div>
 <div id="gdpr">
   <div class="gdpr-inner">
-    <div class="gdpr-txt">We use Firebase to save your progress and show leaderboards. See our <a onclick="showLegal('privacyP')">Privacy Policy</a> and <a onclick="showLegal('termsP')">Terms</a>. We never sell your data.</div>
+    <div class="gdpr-txt">If you accept, we use Firebase to save your progress and run leaderboards, Google Analytics to see how the game is played, and Google AdSense for ads. Decline and you still play the full game, saved on this device only. See our <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a> and <a onclick="showLegal('termsP')">Terms</a>. We never sell your data.</div>
     <div class="gdpr-btns">
       <button class="gdpr-ok" onclick="gdprAccept()">Accept &amp; Continue</button>
       <button class="gdpr-no" onclick="gdprDecline()">Decline</button>
@@ -1490,7 +1497,23 @@ canvas{
 // ║  2. Project Settings → Your Apps → Web → Config             ║
 // ║  3. Replace each "REPLACE_WITH..." value below               ║
 // ╚══════════════════════════════════════════════════════════════╝
+// Escapes player-supplied text before it goes into innerHTML.
+function _esc(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 let _analyticsReady=false;
+// Analytics starts only when the consent bar was accepted. Signing in starts
+// Firebase for cloud save, but on its own it is not consent to analytics.
+let _fbCfgRef=null;
+function _consented(){try{return localStorage.getItem('sv5_gdpr')==='accepted';}catch(e){return false;}}
+function _startAnalytics(){
+  if(_analyticsReady||!_consented()||!_fbCfgRef)return;
+  try{
+    if(_fbCfgRef.measurementId && !String(_fbCfgRef.measurementId).startsWith('REPLACE_')
+       && typeof firebase!=='undefined' && typeof firebase.analytics==='function'){
+      firebase.analytics();
+      _analyticsReady=true;
+    }
+  }catch(e){ console.warn('Analytics unavailable:',e.message); }
+}
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyCeQSVlKL9A0_0nUiN6b3cQS4rS-vlDhIQ",
   authDomain:        "samurai-vengeance-c3999.firebaseapp.com",
@@ -8185,11 +8208,8 @@ async function initFB(){
     // real measurementId is present, so an unconfigured project is silent
     // rather than throwing on every logged event.
     try{
-      if(cfg.measurementId && !String(cfg.measurementId).startsWith('REPLACE_')
-         && typeof firebase.analytics==='function'){
-        firebase.analytics(fbApp);
-        _analyticsReady=true;
-      }
+      _fbCfgRef=cfg;
+      _startAnalytics();
     }catch(e){ console.warn('Analytics unavailable:',e.message); }
 
     // Initialize Auth independently from Firestore. A Firestore problem must not
@@ -8506,16 +8526,10 @@ function openSignIn(){
   document.getElementById('authScreen').classList.add('active');
   document.getElementById('splashScreen').style.display='none';
   showAuthCard();
-  // Asking to sign in IS opting into remote storage, so start Firebase if the
-  // consent bar never got answered.
-  if(!_fbReady){
-    if(localStorage.getItem('sv5_gdpr')!=='accepted'){
-      localStorage.setItem('sv5_gdpr','accepted');
-      const g=document.getElementById('gdpr');
-      if(g&&g.style.display!=='none'){g.style.display='none';try{layoutTouchControls()}catch(e){}}
-    }
-    initFB();
-  }
+  // Asking to sign in is opting into cloud save, so start Firebase. It is not
+  // consent to analytics or ads: those wait for Accept on the consent bar,
+  // which stays up if it has not been answered.
+  if(!_fbReady)initFB();
 }
 window.enterGame=enterGame; window.openSignIn=openSignIn;
 
@@ -8586,7 +8600,7 @@ async function openLB(field){
       const val=_lbField==='stage'?'Stage '+dat.stage:_lbField==='combo'?'×'+dat.combo:(dat.kills||0)+' kills';
       return`<div class="lb-row${me?' me':''}">
         <div class="lb-rank ${rc[i]||''}">${i+1}</div>
-        <div class="lb-name">${dat.name||'Warrior'}${me?' (You)':''}</div>
+        <div class="lb-name">${_esc(dat.name||'Warrior')}${me?' (You)':''}</div>
         <div class="lb-score">${val}</div>
       </div>`;
     }).join('');
@@ -8602,6 +8616,7 @@ function checkGDPR(){
   } else if(c==='accepted'){
     // Returning user — the splash is already up and PLAY NOW goes straight in,
     // so Firebase just warms up behind it. If it fails, nothing is blocked.
+    _loadAdSense();
     initFB().then(ok=>{ if(!ok&&!_entered)_guest=true; });
   } else {
     // Declined GDPR — guest mode, straight to menu
@@ -8615,6 +8630,8 @@ function gdprAccept(){
   // on the splash, "Accept & Continue" is the brightest button on screen and a
   // newcomer taps it expecting the game to start. It used to only close the
   // bar and leave them sitting on the splash. Now it does what it says.
+  _loadAdSense();
+  if(_fbReady)_startAnalytics();
   initFB().then(ok=>{ if(!ok&&!_entered)_guest=true; });
   if(!_entered)enterGame('accept');
 }
