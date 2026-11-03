@@ -1710,6 +1710,9 @@ const sfx={
   jump:()=>{tone(360,'sine',.04,.16,.01);tone(540,'sine',.03,.09,.01);},
   dash:()=>{tone(700,'sawtooth',.03,.26,.002);noise(.04,.06,3000);},
   parry:()=>{tone(1480,'triangle',.05,.30,.001);tone(1050,'sine',.10,.48,.001);tone(800,'sine',.15,.26,.001,.14);noise(.03,.05,6000);},
+  // Second layer on a successful parry: a high metallic ring that hangs a
+  // moment after the clang. Louder and longer on boss parries.
+  parryRing:s=>{tone(2637,'sine',.38,.11*s,.001,.2);tone(3951,'sine',.26,.05*s,.001,.15);setTimeout(()=>tone(1975,'triangle',.3,.07*s,.002,.15),40);},
   special:()=>{for(let i=0;i<6;i++)setTimeout(()=>{tone(180+i*90,'sawtooth',.12,.42,.008);noise(.06,.08,600);},i*55);},
   coin:()=>{tone(740,'sine',.04,.16,.004);setTimeout(()=>tone(940,'sine',.03,.11,.004),55);},
   die:()=>{tone(105,'sawtooth',.25,.42,.01);noise(.3,.18,400);setTimeout(()=>tone(65,'sawtooth',.18,.36,.01),180);},
@@ -1946,6 +1949,25 @@ let _hStop = 0;
 let PARRY_STOP = 6;
 try{ const _ps=parseInt(localStorage.getItem('sv5_parrystop')); if(_ps>=0&&_ps<=20) PARRY_STOP=_ps; }catch(e){}
 let _pStop = 0;
+// ── Parry moment ─────────────────────────────────────────
+// A successful parry already freezes the game for PARRY_STOP frames. This adds
+// the payoff on top: a short white flash, a small camera punch toward the
+// shield, an expanding ring and a spray of sparks, plus a brighter ring in the
+// sound. Everything here is timed in real milliseconds, not update ticks, so it
+// keeps animating through the freeze. Flash and zoom follow the Screen Shake
+// setting, so players who turn shake off get the ring and sparks only.
+let _pfx=null;
+function _parryFX(str){
+  str=str||1;
+  const x=P.x+P.w/2+P.face*14, y=P.y+P.h*.42;
+  const sparks=[];
+  for(let i=0,n=Math.round(10*str);i<n;i++){
+    const a=(P.face>0?0:Math.PI)+(Math.random()-.5)*2.4;
+    sparks.push({a,v:2.6+Math.random()*3.6*str,len:10+Math.random()*14});
+  }
+  _pfx={t:performance.now(),x,y,str,sparks};
+  try{sfx.parryRing(str);}catch(e){}
+}
 
 const DIFF={
   easy:  {spd:.2,ss:.02,eHp:10,eHs:2,dmg:4,pSpd:2},
@@ -2534,7 +2556,7 @@ function _reachParry(){
     const dx=q.x-px, dy=q.y-py;
     if(Math.hypot(dx,dy)>CUE_PROJ)return;
     if(dx*q.vx+dy*q.vy>=0)return;                 // receding, not a threat
-    q.done=true;sfx.parry();_pStop=PARRY_STOP;shake(5);
+    q.done=true;sfx.parry();_pStop=PARRY_STOP;_parryFX(0.8);shake(5);
     spawnP(q.x,q.y,'#60a5fa',14);
     addFloat(px,P.y,'PARRY!','#60a5fa');
     combo+=3;comboT=130;updateHUD();grantPunish(px,P.y);
@@ -2547,7 +2569,7 @@ function _reachParry(){
     if(Math.hypot(dx,dy)>CUE_MELEE)continue;
     e.face*=-1;e.atkCD=115;
     if(e.type==='shield'){e.guardT=SHIELD_BREAK;e.turnT=0;}
-    sfx.parry();_pStop=PARRY_STOP;shake(5);
+    sfx.parry();_pStop=PARRY_STOP;_parryFX(0.8);shake(5);
     spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);
     addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');
     combo+=3;comboT=130;updateHUD();grantPunish(px,P.y);
@@ -3273,7 +3295,7 @@ function update(){
     p.x+=p.vx;p.y+=p.vy;
     if(!p.done&&ri(P,{x:p.x-8,y:p.y-8,w:16,h:16})){
       if(P.parry){
-        p.done=true;sfx.parry();_pStop=PARRY_STOP;shake(5);spawnP(p.x,p.y,'#60a5fa',14);
+        p.done=true;sfx.parry();_pStop=PARRY_STOP;_parryFX(0.8);shake(5);spawnP(p.x,p.y,'#60a5fa',14);
         addFloat(P.x+P.w/2,P.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();
         grantPunish(P.x+P.w/2,P.y);
       } else if(p.tut&&!P.dash){
@@ -3426,7 +3448,7 @@ function updateTengu(e,cfg){
 
   if(e.diving>0&&riHit(P,e,.22,.22)&&e.atkCD<=0){
     if(P.parry){
-      sfx.parry();_pStop=PARRY_STOP;shake(7);spawnP(ecx,e.y+e.h/2,'#60a5fa',20);
+      sfx.parry();_pStop=PARRY_STOP;_parryFX(1.0);shake(7);spawnP(ecx,e.y+e.h/2,'#60a5fa',20);
       addFloat(ecx,e.y,'PARRY!','#60a5fa');combo+=4;comboT=150;
       e.diving=0;e.diveT=130;e.atkCD=60;updateHUD();
       grantPunish(P.x+P.w/2,P.y);
@@ -3501,7 +3523,7 @@ function updateEnemy(e,cfg){
   // airborne is evasion, not invulnerability.
   const _sameFooting=P.gnd&&Math.abs((e.y+e.h)-(P.y+P.h))<34;
   if(_sameFooting&&riHit(P,e)&&e.atkCD<=0){
-    if(P.parry){if(e.type==='shield'){e.guardT=SHIELD_BREAK;e.turnT=0;}sfx.parry();_pStop=PARRY_STOP;e.face*=-1;e.atkCD=115;shake(5);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();grantPunish(P.x+P.w/2,P.y);}
+    if(P.parry){if(e.type==='shield'){e.guardT=SHIELD_BREAK;e.turnT=0;}sfx.parry();_pStop=PARRY_STOP;_parryFX(1.0);e.face*=-1;e.atkCD=115;shake(5);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',18);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();grantPunish(P.x+P.w/2,P.y);}
     else if(!P.dash&&P.inv<=0){P.hp-=modDmg(cfg.dmg);e.atkCD=82;P.vx=P.x<e.x?-10:10;P.vy=-6;shake(14);sfx.hit();updateHUD();addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg)),'#ff3333');}
   }
 }
@@ -3547,7 +3569,7 @@ function updateBoss(e,cfg){
   }
   const _sameFootingB=P.gnd&&Math.abs((e.y+e.h)-(P.y+P.h))<40;
   if(_sameFootingB&&riHit(P,e,.28,.40)&&!(e.atkCD>0)){
-    if(P.parry){e.atkCD=60;P.vx=P.x<e.x?-7:7;sfx.parry();_pStop=PARRY_STOP;e.face*=-1;shake(9);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',24);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=5;comboT=180;updateHUD();grantPunish(P.x+P.w/2,P.y);}
+    if(P.parry){e.atkCD=60;P.vx=P.x<e.x?-7:7;sfx.parry();_pStop=PARRY_STOP;_parryFX(1.4);e.face*=-1;shake(9);spawnP(e.x+e.w/2,e.y+e.h/2,'#60a5fa',24);addFloat(e.x+e.w/2,e.y,'PARRY!','#60a5fa');combo+=5;comboT=180;updateHUD();grantPunish(P.x+P.w/2,P.y);}
     else if(!P.dash&&P.inv<=0){e.atkCD=50;P.hp-=modDmg(cfg.dmg*2.2);shake(20);sfx.hit();updateHUD();P.vx=P.x<e.x?-15:15;P.vy=-9;addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg*2.2)),'#ff0000');}
   }
 }
@@ -3855,6 +3877,10 @@ function drawGame(){
   const W=VW,H=VH;   // CSS pixels; the DPR scale is in the transform
   gx.clearRect(0,0,W,H);
   if(shk>0)gx.translate((Math.random()-.5)*shk,(Math.random()-.5)*shk);
+  if(_pfx&&CFG.shake){
+    const age=performance.now()-_pfx.t;
+    if(age<200){const z=1+.045*_pfx.str*(1-age/200);gx.translate(_pfx.x,_pfx.y);gx.scale(z,z);gx.translate(-_pfx.x,-_pfx.y);}
+  }
 
   // Rain streaks (behind everything)
   if(rainIntensity>0){
@@ -4124,6 +4150,25 @@ function drawGame(){
   // Undo the screen-shake translate. Must restore the DPR scale, not the
   // identity — resetting to 1 here would silently un-scale every frame
   // after the first and put the whole game back at CSS resolution.
+  if(_pfx){
+    const age=performance.now()-_pfx.t;
+    if(age<340){
+      const k=age/340, e=1-Math.pow(1-k,3);
+      gx.save();
+      gx.globalAlpha=(1-k)*.9;
+      gx.strokeStyle='#fde68a';gx.lineWidth=5*(1-k)+1.5;gx.shadowColor='#fbbf24';gx.shadowBlur=12;
+      gx.beginPath();gx.arc(_pfx.x,_pfx.y,8+62*_pfx.str*e,0,Math.PI*2);gx.stroke();
+      gx.globalAlpha=(1-k)*.8;gx.strokeStyle='#fff';gx.lineWidth=2.5;
+      gx.beginPath();gx.arc(_pfx.x,_pfx.y,4+34*_pfx.str*e,0,Math.PI*2);gx.stroke();
+      gx.globalAlpha=1-k;gx.lineCap='round';
+      _pfx.sparks.forEach(sp=>{
+        const d=sp.v*age*.09, x=_pfx.x+Math.cos(sp.a)*d, y=_pfx.y+Math.sin(sp.a)*d+age*age*.00018;
+        gx.strokeStyle=k<.35?'#fff':'#fbbf24';gx.lineWidth=3;
+        gx.beginPath();gx.moveTo(x,y);gx.lineTo(x-Math.cos(sp.a)*sp.len*(1-k),y-Math.sin(sp.a)*sp.len*(1-k));gx.stroke();
+      });
+      gx.restore();
+    }
+  }
   gx.setTransform(DPR*WZ,0,0,DPR*WZ,0,0);
 }
 
@@ -5925,6 +5970,10 @@ function drawBossHpBar(e){
 function drawFG(){
   const W=VW,H=VH;   // CSS pixels; the DPR scale is in the transform
   fx.clearRect(0,0,W,H);
+  if(_pfx&&CFG.shake){
+    const age=performance.now()-_pfx.t;
+    if(age<120){fx.save();fx.globalAlpha=.3*Math.min(1.3,_pfx.str)*(1-age/120);fx.fillStyle='#fff';fx.fillRect(0,0,W,H);fx.restore();}
+  }
 
   // Sakura petals — physically varied shapes
   sakura.forEach(p=>{
