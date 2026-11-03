@@ -505,7 +505,7 @@ canvas{
 #tutCoach .tc-skip{pointer-events:auto;margin-top:6px;background:none;border:none;color:rgba(255,255,255,.45);
   font:11px Georgia,serif;letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;cursor:pointer;}
 #tutCoach .tc-skip:hover,#tutCoach .tc-skip:focus-visible{color:#fbbf24;}
-@media (max-height:430px){#tutCoach{top:calc(env(safe-area-inset-top,0px) + 8px);padding:7px 12px 4px;}#tutCoach .tc-txt{font-size:13px;}}
+@media (max-height:430px){#tutCoach{top:calc(env(safe-area-inset-top,0px) + 48px);max-width:min(560px,calc(100vw - 280px));padding:7px 12px 4px;}#tutCoach .tc-txt{font-size:13px;}}
 .tut-glow{animation:tutGlow 1.1s ease-in-out infinite;}
 @keyframes tutGlow{0%,100%{box-shadow:0 0 0 2px rgba(251,191,36,.55);}50%{box-shadow:0 0 18px 6px rgba(251,191,36,.45),0 0 0 2px rgba(251,191,36,.95);}}
 @media (prefers-reduced-motion:reduce){.tut-glow{animation:none;box-shadow:0 0 0 3px #fbbf24;}}
