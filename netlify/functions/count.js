@@ -158,7 +158,64 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-function renderReport(days) {
+
+// 30-day trend chart: inline SVG plus a small hover script, no libraries.
+// Two series on one shared count axis. Colors were checked for colorblind
+// separation and lightness against the card surface (#160a12).
+function renderTrend(days) {
+  const pts = days.slice().reverse().map(d => {
+    const g = k => d.data[k] || 0;
+    return { id: d.id, a: g('arrived'), p: g('start_easy') + g('start_normal') + g('start_hard') };
+  });
+  // Skip the empty days before counting began, so the line starts at real data.
+  while (pts.length > 1 && !pts[0].a && !pts[0].p) pts.shift();
+  if (!pts.some(x => x.a || x.p)) return '';
+  const W = 380, H = 210, L = 28, R = 66, T = 12, B = 24;
+  const iw = W - L - R, ih = H - T - B, n = pts.length;
+  const max = Math.max(...pts.map(x => Math.max(x.a, x.p)));
+  const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000].find(s => max / s <= 4) || 10000;
+  const top = Math.max(step, Math.ceil(max / step) * step);
+  const X = i => L + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+  const Y = v => T + ih - (v / top) * ih;
+  const path = k => pts.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(x[k]).toFixed(1)).join('');
+  let grid = '';
+  for (let v = 0; v <= top; v += step) {
+    grid += `<line x1="${L}" x2="${L + iw}" y1="${Y(v)}" y2="${Y(v)}" class="gl"/>` +
+      `<text x="${L - 6}" y="${Y(v) + 4}" class="ax" text-anchor="end">${v}</text>`;
+  }
+  const fmt = id => { const [, m, d] = id.split('-'); return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m - 1] + ' ' + (+d); };
+  let xl = '';
+  pts.forEach((x, i) => { if ((n - 1 - i) % 10 === 0) xl += `<text x="${X(i)}" y="${H - 6}" class="ax" text-anchor="middle">${fmt(x.id)}</text>`; });
+  const last = pts[n - 1], li = n - 1;
+  let ly1 = Y(last.a), ly2 = Y(last.p);
+  if (Math.abs(ly1 - ly2) < 14) { if (ly1 <= ly2) { ly1 -= 7; ly2 += 7; } else { ly1 += 7; ly2 -= 7; } }
+  const data = JSON.stringify(pts.map(x => [fmt(x.id), x.a, x.p]));
+  const rows = pts.slice().reverse().map(x => `<tr><th>${esc(fmt(x.id))}</th><td>${x.a}</td><td>${x.p}</td></tr>`).join('');
+  return `<section class="trend">
+  <h2>LAST ${n} DAYS</h2>
+  <div class="lg"><span><i style="background:#b08d2e"></i>Arrived</span><span><i style="background:#5b8fe0"></i>Started a run</span></div>
+  <div class="cw"><svg id="tc" viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily visitors and runs started, last ${n} days">
+    ${grid}${xl}
+    <path d="${path('a')}" class="ln" stroke="#b08d2e"/>
+    <path d="${path('p')}" class="ln" stroke="#5b8fe0"/>
+    <circle cx="${X(li)}" cy="${Y(last.a)}" r="4" fill="#b08d2e" stroke="#160a12" stroke-width="2"/>
+    <circle cx="${X(li)}" cy="${Y(last.p)}" r="4" fill="#5b8fe0" stroke="#160a12" stroke-width="2"/>
+    <text x="${X(li) + 9}" y="${ly1 + 4}" class="dl">${last.a} arrived</text>
+    <text x="${X(li) + 9}" y="${ly2 + 4}" class="dl">${last.p} started</text>
+    <line id="tx" y1="${T}" y2="${T + ih}" class="xh" visibility="hidden"/>
+    <rect x="${L}" y="${T}" width="${iw}" height="${ih}" fill="transparent" id="th"/>
+  </svg><div id="tt" class="tt" hidden></div></div>
+  <details><summary>Show as a table</summary><table class="walls"><thead><tr><th></th><th>arrived</th><th>started</th></tr></thead><tbody>${rows}</tbody></table></details>
+  <script>(()=>{const D=${data},n=D.length,L=${L},iw=${iw},W=${W};const s=document.getElementById('tc'),h=document.getElementById('th'),x=document.getElementById('tx'),t=document.getElementById('tt');
+  function mv(e){const r=s.getBoundingClientRect(),c=e.touches?e.touches[0]:e,vx=(c.clientX-r.left)/r.width*W;const i=Math.max(0,Math.min(n-1,Math.round((vx-L)/iw*(n-1))));const px=L+(n===1?iw/2:i/(n-1)*iw);
+  x.setAttribute('x1',px);x.setAttribute('x2',px);x.setAttribute('visibility','visible');const d=D[i];t.innerHTML='<b>'+d[0]+'</b><br><i style="background:#b08d2e"></i>'+d[1]+' arrived<br><i style="background:#5b8fe0"></i>'+d[2]+' started a run';t.hidden=false;
+  const left=px/W*r.width;t.style.left=Math.min(Math.max(left-70,0),r.width-140)+'px';}
+  function out(){x.setAttribute('visibility','hidden');t.hidden=true;}
+  h.addEventListener('mousemove',mv);h.addEventListener('touchstart',mv,{passive:true});h.addEventListener('touchmove',mv,{passive:true});h.addEventListener('mouseleave',out);})();</script>
+</section>`;
+}
+
+function renderReport(days, trendDays) {
   const row = (label, n, base) => {
     const pct = base ? Math.round((n / base) * 100) : null;
     const w = base ? Math.max(1.5, (n / base) * 100) : 0;
@@ -322,10 +379,23 @@ th{text-align:left;font-weight:400;}
 .empty{color:var(--dim);font-size:13px;margin:0;}
 .note{font-size:12px;color:var(--dim);line-height:1.65;margin:10px 0 0;}
 .note b{color:var(--gold);font-size:14px;}
+.trend .lg{display:flex;gap:18px;font-size:12.5px;color:var(--dim);margin:0 0 6px;}
+.lg i,.tt i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px;}
+.cw{position:relative;}
+#tc{width:100%;height:auto;display:block;touch-action:pan-y;}
+#tc .gl{stroke:rgba(240,228,200,.08);stroke-width:1;}
+#tc .ax{fill:var(--dim);font:10px Georgia,serif;}
+#tc .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+#tc .dl{fill:var(--ink);font:10.5px Georgia,serif;}
+#tc .xh{stroke:rgba(240,228,200,.35);stroke-width:1;}
+.tt{position:absolute;top:4px;width:140px;background:#0d0409;border:1px solid var(--line);border-radius:3px;padding:6px 8px;font-size:12px;line-height:1.5;pointer-events:none;}
+.trend details{margin-top:10px;font-size:12px;color:var(--dim);}
+.trend summary{cursor:pointer;}
 footer{color:var(--dim);font-size:11.5px;line-height:1.7;margin-top:22px;}
 </style></head><body>
 <h1>Player funnel</h1>
 <p class="sub">Samurai Vengeance &middot; last ${days.length} days &middot; Pacific</p>
+${renderTrend(trendDays || days)}
 ${blocks}
 <footer>Counts only &mdash; no cookies, no identifiers, nothing stored on any
 visitor's device. Fires for every visitor, not just those who accept the
@@ -350,7 +420,7 @@ exports.handler = async (event) => {
     if (!db) return { statusCode: 500, body: 'Counter unavailable: ' + _initError };
 
     const ids = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 30; i++) {
       const d = new Date(Date.now() - i * 86400000);
       ids.push(d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }));
     }
@@ -360,7 +430,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-      body: renderReport(days),
+      body: renderReport(days.slice(0, 7), days),
     };
   }
 
