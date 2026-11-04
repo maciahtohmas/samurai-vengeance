@@ -16,6 +16,14 @@
   # instead of trying to inline it.
   external_node_modules = ["firebase-admin"]
 
+# Working drafts (articles, outreach email, listing copy) live in the repo but
+# are not pages. Netlify publishes the whole folder, so hide them explicitly.
+[[redirects]]
+  from = "/drafts/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
 # Pretty URLs for the Stripe endpoints, so the game can call a relative
 # /api/create-checkout instead of a hardcoded deployment hostname.
 [[redirects]]
