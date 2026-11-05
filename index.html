@@ -3995,6 +3995,7 @@ function drawGame(){
       gx.globalAlpha=.15;gx.fillStyle='rgba(140,180,220,1)';gx.fillRect(l.x,l.y,l.w,2);gx.globalAlpha=1;
     }
     }
+    _ledgeDecor(l);
     // Spikes
     if(l.spikes>0){
       for(let k=1;k<=l.spikes;k++){
@@ -4524,6 +4525,56 @@ function drawEnv(ctx,n,x,groundY,w,alpha,flip){
   ctx.drawImage(_envImg,p[0],p[1],p[2],p[3],-w/2,-h,w,h);
   ctx.restore();
   return true;
+}
+// Purely decorative dressing for floating platforms: moss on the top edge,
+// carved end blocks, roots and vines hanging underneath, and on some ledges a
+// shimenawa rope with paper streamers. Nothing here touches collision. Every
+// choice is seeded from the ledge's x and width, so a platform keeps the same
+// dressing every frame instead of flickering.
+function _ledgeRand(l,i){const v=Math.sin((l.x*12.9898+l.w*78.233+i*37.719))*43758.5453;return v-Math.floor(v);}
+function _ledgeDecor(l){
+  const g=gx,t=performance.now()/1000,x=l.x,y=l.y,w=l.w,h=l.h,R=i=>_ledgeRand(l,i);
+  g.save();
+  // Carved end blocks: a slightly lighter stone cap at each end frames the slab.
+  g.fillStyle='rgba(120,110,140,.22)';g.fillRect(x,y,6,h);g.fillRect(x+w-6,y,6,h);
+  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+6,y+2,1,h-2);g.fillRect(x+w-7,y+2,1,h-2);
+  // Hanging roots and vines, swaying a little.
+  const nv=2+Math.floor(R(1)*4);
+  g.lineCap='round';
+  for(let i=0;i<nv;i++){
+    const vx=x+10+R(10+i)*(w-20),len=10+R(20+i)*26,sw=Math.sin(t*1.3+i*1.7+x*.01)*2.2;
+    g.strokeStyle=i%2?'rgba(46,72,52,.85)':'rgba(30,50,38,.9)';g.lineWidth=1.6;
+    g.beginPath();g.moveTo(vx,y+h-1);g.quadraticCurveTo(vx+sw*.5,y+h+len*.5,vx+sw,y+h+len);g.stroke();
+    g.fillStyle='rgba(70,110,72,.8)';
+    for(let k=1;k<4;k++){const fy=y+h+len*k/4,fx=vx+sw*k/4;g.beginPath();g.ellipse(fx+(k%2?2:-2),fy,2.2,1.2,k%2?.6:-.6,0,Math.PI*2);g.fill();}
+  }
+  // Shimenawa rope with zigzag paper streamers on roughly a third of ledges.
+  if(w>140&&R(3)<.36){
+    const ax=x+18,bx=x+w-18,sag=8,ry=y+h+1;
+    g.strokeStyle='#b9a27a';g.lineWidth=3;
+    g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();
+    g.strokeStyle='rgba(90,70,40,.8)';g.lineWidth=1;g.setLineDash([2,3]);
+    g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();g.setLineDash([]);
+    const ns=Math.max(2,Math.floor((bx-ax)/60));
+    for(let i=1;i<=ns;i++){
+      const u=i/(ns+1),sx=ax+(bx-ax)*u,sy=ry+sag*2*2*u*(1-u),fl=Math.sin(t*2+i)*1.5;
+      g.fillStyle='rgba(240,236,224,.92)';
+      g.beginPath();g.moveTo(sx-2,sy);g.lineTo(sx+3,sy);g.lineTo(sx+3+fl,sy+5);g.lineTo(sx-1+fl,sy+5);
+      g.lineTo(sx+3+fl,sy+10);g.lineTo(sx-1+fl,sy+10);g.lineTo(sx+2+fl,sy+15);g.lineTo(sx-2+fl,sy+15);g.closePath();g.fill();
+    }
+  }
+  // Moss tufts and grass blades along the top edge, kept low so the standable
+  // surface stays obvious.
+  const nm=Math.floor(w/26);
+  for(let i=0;i<nm;i++){
+    if(R(40+i)<.45)continue;
+    const mx=x+8+R(60+i)*(w-16),mw=6+R(80+i)*10;
+    g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx,y+1,mw/2,2.2,0,Math.PI,0);g.fill();
+    g.fillStyle='rgba(96,140,90,.55)';g.fillRect(mx-mw/2+1,y-1,mw-2,1);
+    if(R(100+i)<.5){g.strokeStyle='rgba(90,130,80,.8)';g.lineWidth=1;g.beginPath();
+      g.moveTo(mx-2,y);g.lineTo(mx-3,y-4-R(120+i)*3);g.moveTo(mx+1,y);g.lineTo(mx+2,y-3-R(140+i)*3);g.stroke();}
+  }
+  g.restore();
 }
 // Repeat the ground strip across a rect, clipped to it. Offsets are floored to
 // whole pixels: drawing a tiled texture on fractional coordinates makes the
