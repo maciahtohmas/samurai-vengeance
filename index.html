@@ -2128,6 +2128,41 @@ window.addEventListener('keyup',e=>{
   keys[e.code]=false;
   if(e.code==='KeyQ'||e.code==='KeyE')_parryHeld=false;
 });
+// Game controller support (standard mapping: Xbox, PlayStation, Switch Pro).
+// Polled on its own animation frame once a pad connects. Buttons call the same
+// actions as the keyboard, and the stick and d-pad drive the same movement
+// keys, written only when the pad's state changes so a keyboard held at the
+// same time is not overridden.
+//   A / Cross: jump    X / Square: attack    B / Circle: dash
+//   Y / Triangle: Ki strike    LB, RB, LT, RT: parry    Start: pause
+//   Left stick or d-pad: move, down drops through a platform
+const _pad={on:false,prev:[],dir:{ArrowLeft:false,ArrowRight:false,ArrowDown:false}};
+function _padPoll(){
+  const ps=navigator.getGamepads?navigator.getGamepads():[];
+  let gp=null;for(const p of ps)if(p&&p.connected){gp=p;break;}
+  if(!gp){_pad.on=false;return;}
+  const b=i=>!!(gp.buttons[i]&&(gp.buttons[i].pressed||gp.buttons[i].value>.5));
+  const now=gp.buttons.map((_,i)=>b(i)),was=_pad.prev,edge=i=>now[i]&&!was[i];
+  const ax=gp.axes[0]||0,ay=gp.axes[1]||0;
+  const want={ArrowLeft:ax<-.4||b(14),ArrowRight:ax>.4||b(15),ArrowDown:ay>.6||b(13)};
+  for(const k in want)if(want[k]!==_pad.dir[k]){keys[k]=want[k];_pad.dir[k]=want[k];}
+  if(gState==='playing'&&!paused){
+    if(edge(0)||edge(12))doJump();
+    if(edge(2))doAtk();
+    if(edge(1))doDash();
+    if(edge(3)){if(P.focus<P.maxFocus)_kiNotReady();else doSpc();}
+    if(edge(4)||edge(5)||edge(6)||edge(7))doParry();
+  }
+  if(edge(9)&&(gState==='playing'))doPause();
+  _pad.prev=now;
+  requestAnimationFrame(_padPoll);
+}
+window.addEventListener('gamepadconnected',()=>{
+  if(_pad.on)return;_pad.on=true;
+  try{notif('Controller connected');}catch(e){}
+  try{_count('pad',{});}catch(e){}
+  requestAnimationFrame(_padPoll);
+});
 function bt(id,k,fn,hap=12){
   const el=document.getElementById(id);if(!el)return;
   el.addEventListener('touchstart',e=>{e.preventDefault();keys[k]=true;if(hap)_haptic(hap);if(fn)fn();},{passive:false});

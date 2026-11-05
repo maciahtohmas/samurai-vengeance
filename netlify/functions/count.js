@@ -75,7 +75,7 @@ function getDb() {
 // ── Event vocabulary ─────────────────────────────────────────────
 // An allowlist, not a filter. The endpoint is public, so without this anyone
 // could invent field names and grow the document without limit.
-const SIMPLE = new Set(['arrived', 'menu']);
+const SIMPLE = new Set(['arrived', 'menu', 'pad']);
 const STAGED = new Set(['s_start', 's_clear', 'death', 'quit']);
 const DIFFS  = new Set(['easy', 'normal', 'hard']);
 // Which bucket a visitor fell into, derived on the client from storage the
@@ -329,6 +329,7 @@ function renderReport(days, trendDays) {
       <h2>${esc(d.id)}</h2>
       ${arrived ? `<table class="funnel">${funnel}</table>` : '<p class="empty">No traffic recorded.</p>'}
       ${diffs ? `<ul class="diffs">${diffs}</ul>` : ''}
+      ${g('pad') ? `<p class="note">${g('pad')} connected a game controller.</p>` : ''}
       ${enterBlock}
       ${tutBlock}
       ${socBlock}
