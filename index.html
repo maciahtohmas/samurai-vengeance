@@ -3225,8 +3225,10 @@ function update(){
   // Ambient always
   PL.clouds.forEach(c=>{c.x-=c.s;if(c.x+c.w<0)c.x=VW+60;});
   sakura.forEach(p=>{
-    p.x+=p.vx+Math.sin(gt*.018+p.angle)*1.1;p.y+=p.vy;p.angle+=p.spin;
+    const _sm=_season()===1?.25:_season()===3?.6:1;
+    p.x+=(p.vx+Math.sin(gt*.018+p.angle)*1.1)*_sm;p.y+=p.vy*_sm*(_season()===1?Math.sin(gt*.01+p.angle):1);p.angle+=p.spin;
     if(p.y>VH+10){p.y=-10;p.x=Math.random()*VW;}
+    if(p.y<-30)p.y=VH+5;
     if(p.x<-20)p.x=VW+20;
   });
 
@@ -6136,13 +6138,33 @@ function drawFG(){
     if(best){fx.save();fx.globalAlpha=ba;fx.fillStyle=best.flashColor;fx.fillRect(0,0,W,H);fx.restore();}
   }
 
-  // Sakura petals — physically varied shapes
+  // Seasonal particles. The same drifting particles are drawn as cherry petals
+  // in spring, fireflies in summer, maple leaves in autumn and snow in winter,
+  // following the ten-stage chapters (see _season).
+  const _se=_season();
+  if(_se===3||_se===1){
+    sakura.forEach((p,i)=>{
+      const front=p.layer==='front';
+      if(_se===3){
+        fx.globalAlpha=p.opacity*(front?.85:.45);fx.fillStyle='#f1f5ff';
+        fx.beginPath();fx.arc(p.x,p.y,p.r*(front?.9:.6),0,Math.PI*2);fx.fill();
+      } else if(i%2===0){
+        const f=.35+.65*Math.max(0,Math.sin(gt*.05+p.angle*7));
+        fx.globalAlpha=f*(front?.9:.5);
+        const g=fx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*3);
+        g.addColorStop(0,'rgba(250,240,150,1)');g.addColorStop(1,'rgba(250,240,150,0)');
+        fx.fillStyle=g;fx.beginPath();fx.arc(p.x,p.y,p.r*3,0,Math.PI*2);fx.fill();
+      }
+    });
+    fx.globalAlpha=1;
+  } else
   sakura.forEach(p=>{
     fx.save();fx.translate(p.x,p.y);fx.rotate(p.angle);
     const a=p.layer==='front'?.7:.38;
     fx.globalAlpha=p.opacity*a*(p.layer==='front'?1:.7);
     // Realistic 5-petal cherry blossom petal shape
-    fx.fillStyle=`hsla(${p.hue},70%,${p.layer==='front'?78:72}%,1)`;
+    if(_se===2)fx.scale(1.35,1.35);
+    fx.fillStyle=_se===2?`hsla(${p.hue>330?14:28},80%,${p.layer==='front'?52:44}%,1)`:`hsla(${p.hue},70%,${p.layer==='front'?78:72}%,1)`;
     fx.beginPath();fx.moveTo(0,0);
     fx.bezierCurveTo(p.r*.5,-p.r*.8,p.r*1.2,-p.r*.8,p.r*1.2,0);
     fx.bezierCurveTo(p.r*1.2,p.r*.8,p.r*.5,p.r*1.2,0,p.r*1.5);
@@ -6894,10 +6916,10 @@ function _showGameOver(){
 // FIX 5: Share score via Web Share API
 // ══════════════════════════════════════════════════
 async function shareScore(){
-  const text = `⚔️ Samurai Vengeance\nI reached Stage ${lvl} with a ×${maxCombo} combo!\nCan you beat it? 🏯\nhttps://samuraivengeance.com`;
+  const text = `⚔️ Samurai Vengeance\nI reached Stage ${lvl} with a ×${maxCombo} combo!\nCan you beat it? 🏯\nhttps://samuraivengeance.com/?ref=share`;
   try{
     if(navigator.share){
-      await navigator.share({title:'Samurai Vengeance',text,url:'https://samuraivengeance.com'});
+      await navigator.share({title:'Samurai Vengeance',text,url:'https://samuraivengeance.com/?ref=share'});
     } else {
       await navigator.clipboard.writeText(text);
       notif('Score copied to clipboard! 📋');
@@ -7836,6 +7858,8 @@ function _srcBucket(){
   const r=(document.referrer||'').toLowerCase();
   const m=k=>tag===k||r.includes(k);
 
+  // A link a player shared from the game-over screen.
+  if(tag==='share')return 'share';
   if(m('reddit'))return 'reddit';
   if(tag==='hn'||r.includes('news.ycombinator')||r.includes('hckrnews'))return 'hn';
   if(m('itch'))return 'itch';
