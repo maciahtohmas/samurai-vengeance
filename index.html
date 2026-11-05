@@ -3965,7 +3965,9 @@ function drawGame(){
     // standing on one drained .65 HP a frame with no spikes visible, no damage
     // number and no hit sound. It read as losing health for no reason.
     let painted=false;
-    if(_envReady&&drawGroundTile(gx,l.x,l.y,l.w,l.h,1)){
+    const _lst=_ledgeStyle(l);
+    if(_lst!=='stone'){_drawLedgeBody(l,_lst);painted=true;}
+    else if(_envReady&&drawGroundTile(gx,l.x,l.y,l.w,l.h,1)){
       painted=true;
       const tg=gx.createLinearGradient(l.x,l.y,l.x+l.w,l.y);
       tg.addColorStop(0,'rgba(200,220,255,.30)');
@@ -4532,47 +4534,117 @@ function drawEnv(ctx,n,x,groundY,w,alpha,flip){
 // choice is seeded from the ledge's x and width, so a platform keeps the same
 // dressing every frame instead of flickering.
 function _ledgeRand(l,i){const v=Math.sin((l.x*12.9898+l.w*78.233+i*37.719))*43758.5453;return v-Math.floor(v);}
+// Which kind of platform this is. Seeded, so a ledge never changes style.
+// Most stay stone; some become temple rooftops or rope-and-plank bridges.
+function _ledgeStyle(l){const r=_ledgeRand(l,7);return r<.22?'roof':r<.40?'bridge':'stone';}
+// Season follows the ten-stage boss chapters: spring, summer, autumn, winter.
+function _season(){return Math.floor(((typeof lvl==='number'?lvl:1)-1)/10)%4;}
+function _drawLedgeBody(l,st){
+  const g=gx,x=l.x,y=l.y,w=l.w,h=l.h;
+  g.save();
+  if(st==='roof'){
+    // Dark slate tiles: a ridge along the top, rounded tile ends along the
+    // bottom edge, and eaves that curl up a few pixels at each end.
+    const rg=g.createLinearGradient(x,y,x,y+h);
+    rg.addColorStop(0,'#3b4252');rg.addColorStop(.35,'#262b36');rg.addColorStop(1,'#12151c');
+    g.fillStyle=rg;g.fillRect(x,y,w,h);
+    g.fillStyle='rgba(0,0,0,.35)';
+    for(let tx=x+5;tx<x+w-3;tx+=9)g.fillRect(tx,y+3,1.2,h-5);
+    g.fillStyle='#1b1f28';
+    for(let tx=x+4;tx<x+w-4;tx+=9){g.beginPath();g.arc(tx+4.5,y+h-1,4,0,Math.PI);g.fill();}
+    g.fillStyle='rgba(160,175,200,.35)';
+    for(let tx=x+4;tx<x+w-4;tx+=9)g.fillRect(tx+3,y+h-4,3,1);
+    g.fillStyle='#4c5566';g.fillRect(x,y,w,3);
+    g.fillStyle='rgba(220,230,255,.45)';g.fillRect(x,y,w,1);
+    // Upturned eave ends with a small gold cap.
+    g.fillStyle='#262b36';
+    [[x,1],[x+w,-1]].forEach(([ex,d])=>{
+      g.beginPath();g.moveTo(ex,y+h);g.quadraticCurveTo(ex-d*4,y+2,ex-d*7,y-5);g.lineTo(ex-d*3,y-4);g.quadraticCurveTo(ex+d*1,y+3,ex+d*4,y+h);g.closePath();g.fill();
+      g.fillStyle='#c9a646';g.beginPath();g.arc(ex-d*6,y-5,1.8,0,Math.PI*2);g.fill();g.fillStyle='#262b36';
+    });
+  } else {
+    // Rope-and-plank bridge: planks with gaps, two ropes along the underside,
+    // and short tied posts at each end.
+    const pg=g.createLinearGradient(x,y,x,y+h);
+    pg.addColorStop(0,'#6b4a2f');pg.addColorStop(1,'#2e1e12');
+    let px=x;
+    while(px<x+w){
+      const pw=Math.min(9+_ledgeRand(l,px|0)*5,x+w-px);
+      g.fillStyle=pg;g.fillRect(px,y,pw-1.2,h-4);
+      g.fillStyle='rgba(255,220,170,.18)';g.fillRect(px,y,pw-1.2,1.5);
+      g.fillStyle='rgba(0,0,0,.25)';g.fillRect(px+2,y+4,pw-5,.8);
+      px+=pw;
+    }
+    g.strokeStyle='#a88d63';g.lineWidth=1.6;
+    g.beginPath();g.moveTo(x,y+h-3);g.lineTo(x+w,y+h-3);g.stroke();
+    g.beginPath();g.moveTo(x,y+h-1);g.lineTo(x+w,y+h-1);g.stroke();
+    g.fillStyle='#3a2616';
+    g.fillRect(x-1,y-6,4,h+6);g.fillRect(x+w-3,y-6,4,h+6);
+    g.strokeStyle='#b9a27a';g.lineWidth=1.2;
+    [x+1,x+w-1].forEach(ex=>{g.beginPath();g.moveTo(ex-3,y-3);g.lineTo(ex+3,y-1);g.moveTo(ex-3,y-1);g.lineTo(ex+3,y+1);g.stroke();});
+  }
+  g.restore();
+}
 function _ledgeDecor(l){
   const g=gx,t=performance.now()/1000,x=l.x,y=l.y,w=l.w,h=l.h,R=i=>_ledgeRand(l,i);
+  const st=_ledgeStyle(l),se=_season();
   g.save();
-  // Carved end blocks: a slightly lighter stone cap at each end frames the slab.
-  g.fillStyle='rgba(120,110,140,.22)';g.fillRect(x,y,6,h);g.fillRect(x+w-6,y,6,h);
-  g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+6,y+2,1,h-2);g.fillRect(x+w-7,y+2,1,h-2);
-  // Hanging roots and vines, swaying a little.
-  const nv=2+Math.floor(R(1)*4);
   g.lineCap='round';
-  for(let i=0;i<nv;i++){
-    const vx=x+10+R(10+i)*(w-20),len=10+R(20+i)*26,sw=Math.sin(t*1.3+i*1.7+x*.01)*2.2;
-    g.strokeStyle=i%2?'rgba(46,72,52,.85)':'rgba(30,50,38,.9)';g.lineWidth=1.6;
-    g.beginPath();g.moveTo(vx,y+h-1);g.quadraticCurveTo(vx+sw*.5,y+h+len*.5,vx+sw,y+h+len);g.stroke();
-    g.fillStyle='rgba(70,110,72,.8)';
-    for(let k=1;k<4;k++){const fy=y+h+len*k/4,fx=vx+sw*k/4;g.beginPath();g.ellipse(fx+(k%2?2:-2),fy,2.2,1.2,k%2?.6:-.6,0,Math.PI*2);g.fill();}
-  }
-  // Shimenawa rope with zigzag paper streamers on roughly a third of ledges.
-  if(w>140&&R(3)<.36){
-    const ax=x+18,bx=x+w-18,sag=8,ry=y+h+1;
-    g.strokeStyle='#b9a27a';g.lineWidth=3;
-    g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();
-    g.strokeStyle='rgba(90,70,40,.8)';g.lineWidth=1;g.setLineDash([2,3]);
-    g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();g.setLineDash([]);
-    const ns=Math.max(2,Math.floor((bx-ax)/60));
-    for(let i=1;i<=ns;i++){
-      const u=i/(ns+1),sx=ax+(bx-ax)*u,sy=ry+sag*2*2*u*(1-u),fl=Math.sin(t*2+i)*1.5;
-      g.fillStyle='rgba(240,236,224,.92)';
-      g.beginPath();g.moveTo(sx-2,sy);g.lineTo(sx+3,sy);g.lineTo(sx+3+fl,sy+5);g.lineTo(sx-1+fl,sy+5);
-      g.lineTo(sx+3+fl,sy+10);g.lineTo(sx-1+fl,sy+10);g.lineTo(sx+2+fl,sy+15);g.lineTo(sx-2+fl,sy+15);g.closePath();g.fill();
+  if(st==='stone'){
+    // Carved end blocks frame the slab.
+    g.fillStyle='rgba(120,110,140,.22)';g.fillRect(x,y,6,h);g.fillRect(x+w-6,y,6,h);
+    g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+6,y+2,1,h-2);g.fillRect(x+w-7,y+2,1,h-2);
+    // Hanging roots and vines, swaying a little. Bare in winter, red in autumn.
+    const nv=se===3?1+Math.floor(R(1)*2):3+Math.floor(R(1)*4);
+    const vc=se===2?['rgba(120,52,30,.85)','rgba(150,70,32,.8)']:['rgba(46,72,52,.85)','rgba(30,50,38,.9)'];
+    const lc=se===2?'rgba(205,92,40,.85)':se===0?'rgba(110,150,90,.8)':'rgba(70,110,72,.8)';
+    for(let i=0;i<nv;i++){
+      const vx=x+10+R(10+i)*(w-20),len=12+R(20+i)*30,sw=Math.sin(t*1.3+i*1.7+x*.01)*2.2;
+      g.strokeStyle=vc[i%2];g.lineWidth=1.6;
+      g.beginPath();g.moveTo(vx,y+h-1);g.quadraticCurveTo(vx+sw*.5,y+h+len*.5,vx+sw,y+h+len);g.stroke();
+      if(se===3)continue;
+      g.fillStyle=lc;
+      for(let k=1;k<4;k++){const fy=y+h+len*k/4,fx=vx+sw*k/4;g.beginPath();g.ellipse(fx+(k%2?2.5:-2.5),fy,3,1.6,k%2?.6:-.6,0,Math.PI*2);g.fill();}
+    }
+    // Shimenawa rope with zigzag paper streamers on about half of wider ledges.
+    if(w>140&&R(3)<.5){
+      const ax=x+16,bx=x+w-16,sag=8,ry=y+h+1;
+      g.strokeStyle='#c4ad83';g.lineWidth=3.5;
+      g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();
+      g.strokeStyle='rgba(90,70,40,.8)';g.lineWidth=1;g.setLineDash([2,3]);
+      g.beginPath();g.moveTo(ax,ry);g.quadraticCurveTo((ax+bx)/2,ry+sag*2,bx,ry);g.stroke();g.setLineDash([]);
+      const ns=Math.max(3,Math.floor((bx-ax)/42));
+      for(let i=1;i<=ns;i++){
+        const u=i/(ns+1),sx=ax+(bx-ax)*u,sy=ry+sag*2*2*u*(1-u),fl=Math.sin(t*2+i)*1.6;
+        g.fillStyle='rgba(244,240,228,.95)';
+        g.beginPath();g.moveTo(sx-3,sy);g.lineTo(sx+4,sy);g.lineTo(sx+4+fl,sy+7);g.lineTo(sx-1+fl,sy+7);
+        g.lineTo(sx+4+fl,sy+14);g.lineTo(sx-1+fl,sy+14);g.lineTo(sx+3+fl,sy+21);g.lineTo(sx-3+fl,sy+21);g.closePath();g.fill();
+      }
     }
   }
-  // Moss tufts and grass blades along the top edge, kept low so the standable
-  // surface stays obvious.
-  const nm=Math.floor(w/26);
-  for(let i=0;i<nm;i++){
-    if(R(40+i)<.45)continue;
+  // Season dressing on the top edge, kept low so the standable surface stays obvious.
+  const n=Math.floor(w/18);
+  for(let i=0;i<n;i++){
+    if(R(40+i)<.4)continue;
     const mx=x+8+R(60+i)*(w-16),mw=6+R(80+i)*10;
-    g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx,y+1,mw/2,2.2,0,Math.PI,0);g.fill();
-    g.fillStyle='rgba(96,140,90,.55)';g.fillRect(mx-mw/2+1,y-1,mw-2,1);
-    if(R(100+i)<.5){g.strokeStyle='rgba(90,130,80,.8)';g.lineWidth=1;g.beginPath();
-      g.moveTo(mx-2,y);g.lineTo(mx-3,y-4-R(120+i)*3);g.moveTo(mx+1,y);g.lineTo(mx+2,y-3-R(140+i)*3);g.stroke();}
+    if(se===3){
+      g.fillStyle='rgba(235,242,255,.95)';g.beginPath();g.ellipse(mx,y+.5,mw/2+2,2.6,0,Math.PI,0);g.fill();
+      if(R(100+i)<.45){g.fillStyle='rgba(210,230,255,.85)';const iy=y+h,il=4+R(120+i)*7;
+        g.beginPath();g.moveTo(mx-2,iy);g.lineTo(mx+2,iy);g.lineTo(mx,iy+il);g.closePath();g.fill();}
+    } else if(se===2){
+      const c=['#c2410c','#b91c1c','#d97706'][Math.floor(R(100+i)*3)];
+      g.fillStyle=c;g.beginPath();g.ellipse(mx,y,2.6,1.4,R(120+i)*3,0,Math.PI*2);g.fill();
+      g.beginPath();g.ellipse(mx+4,y+.5,2.2,1.2,R(140+i)*3,0,Math.PI*2);g.fill();
+    } else if(se===0){
+      g.fillStyle='rgba(249,168,212,.9)';
+      for(let k=0;k<3;k++){g.beginPath();g.ellipse(mx+k*3-3,y+.3,1.8,1,R(160+i+k)*3,0,Math.PI*2);g.fill();}
+      if(st==='stone'&&R(100+i)<.4){g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx+6,y+1,4,1.8,0,Math.PI,0);g.fill();}
+    } else if(st==='stone'){
+      g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx,y+1,mw/2,2.2,0,Math.PI,0);g.fill();
+      g.fillStyle='rgba(96,140,90,.55)';g.fillRect(mx-mw/2+1,y-1,mw-2,1);
+      if(R(100+i)<.5){g.strokeStyle='rgba(90,130,80,.8)';g.lineWidth=1;g.beginPath();
+        g.moveTo(mx-2,y);g.lineTo(mx-3,y-4-R(120+i)*3);g.moveTo(mx+1,y);g.lineTo(mx+2,y-3-R(140+i)*3);g.stroke();}
+    }
   }
   g.restore();
 }
