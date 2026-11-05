@@ -879,12 +879,16 @@ canvas{
     <button class="pclose" onclick="closeP('lbP')">×</button>
     <h2>🏆 Leaderboard</h2>
     <div class="lb-tabs">
+      <div class="lb-tab on" id="lbWeek" onclick="openLBWeekly()">This Week</div>
+      <div class="lb-tab" id="lbAll" onclick="openLBAll()">All Time</div>
+    </div>
+    <div class="lb-tabs">
       <div class="lb-tab on" id="lbTabStage" onclick="openLB('stage')">Best Stage</div>
       <div class="lb-tab" id="lbTabCombo" onclick="openLB('combo')">Best Combo</div>
       <div class="lb-tab" id="lbTabKills" onclick="openLB('kills')">Total Kills</div>
     </div>
     <div id="lbList"><div class="lb-empty">Loading warriors...</div></div>
-    <div style="margin-top:8px;text-align:center;font-size:11px;color:rgba(255,255,255,.18);letter-spacing:.1em">Top 20 global warriors · Updates on stage clear</div>
+    <div id="lbFoot" style="margin-top:8px;text-align:center;font-size:11px;color:rgba(255,255,255,.18);letter-spacing:.1em">Top 20 global warriors · Updates on stage clear</div>
   </div>
 </div>
 
@@ -6629,6 +6633,7 @@ function closeAd(){
   if(adCb){const f=adCb;adCb=null;f();}
 }
 function saveData(){
+  _wkUpdate();
   try{localStorage.setItem('sv5',JSON.stringify({highestLvl,styleKey,isPrem,coins,hpLvl,dmgLvl,sprLvl,dshLvl,pryLvl,diff}));}catch(e){}
   saveST();
   _cloudSave();
@@ -7224,7 +7229,7 @@ window.showRewardAd=showRewardAd; window.closeRewardAd=closeRewardAd;
 // ════════════════════════════════════════════════════
 // 3. LEADERBOARD IMPROVEMENTS — Weekly + Your Rank
 // ════════════════════════════════════════════════════
-let _lbWeekly=false;
+let _lbWeekly=true;   // the weekly board opens first: everyone has a fresh chance
 
 function openLBWeekly(){
   _lbWeekly=true;
@@ -8640,6 +8645,36 @@ async function _onSignedIn(user){
 
 
 // _cloudSave — called from saveData, uses Firebase if available
+// Weekly leaderboard. Each player's best stage, best combo and kills for the
+// current week (Monday 00:00 UTC reset) are kept on this device and written to
+// their leaderboard document under week-stamped field names such as
+// wk2026w45_stage. Ordering by that field only returns players who have one,
+// so each week's board starts empty without deleting anything. Written in its
+// own call so a rejected weekly write can never block the all-time scores.
+function _wkKey(d){
+  d=d||new Date();
+  const t=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));
+  const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);
+  const y=t.getUTCFullYear(),w=Math.ceil(((t-Date.UTC(y,0,1))/864e5+1)/7);
+  return 'wk'+y+'w'+String(w).padStart(2,'0');
+}
+function _wkUpdate(){
+  try{
+    const k=_wkKey();let w=JSON.parse(localStorage.getItem('sv5_wk')||'null');
+    if(!w||w.k!==k)w={k,stage:0,combo:0,killBase:ST.kills||0};
+    w.stage=Math.max(w.stage,typeof lvl==='number'?lvl:0);
+    w.combo=Math.max(w.combo,maxCombo||0);
+    w.kills=Math.max(0,(ST.kills||0)-w.killBase);
+    localStorage.setItem('sv5_wk',JSON.stringify(w));
+    return w;
+  }catch(e){return null;}
+}
+function _wkResetText(){
+  const now=new Date(),d=now.getUTCDay()||7;
+  const next=Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+(8-d));
+  const h=Math.max(1,Math.round((next-now)/36e5));
+  return h>=48?'Resets in '+Math.round(h/24)+' days':'Resets in '+h+' hours';
+}
 async function _cloudSave(){
   if(!_fbReady||!_fbDbReady||!_db||!_user||_guest)return;
   try{
@@ -8654,6 +8689,14 @@ async function _cloudSave(){
       stage:highestLvl,combo:Math.max(ST.bestCombo,maxCombo),kills:ST.kills,
       updatedAt:new Date().toISOString()
     },{merge:true});
+  }catch(e){}
+  try{
+    const w=_wkUpdate();
+    if(w&&w.stage>0){
+      await _fb.setDoc(`leaderboard/${_user.uid}`,{
+        [w.k+'_stage']:w.stage,[w.k+'_combo']:w.combo,[w.k+'_kills']:w.kills
+      },{merge:true});
+    }
   }catch(e){}
 }
 function authSwitch(tab){
@@ -8849,6 +8892,9 @@ let _lbField='stage';
 async function openLB(field){
   _lbField=field||'stage';
   // Update tab UI
+  const _wb=document.getElementById('lbWeek'),_ab=document.getElementById('lbAll'),_ft=document.getElementById('lbFoot');
+  if(_wb)_wb.classList.toggle('on',_lbWeekly);if(_ab)_ab.classList.toggle('on',!_lbWeekly);
+  if(_ft)_ft.textContent=_lbWeekly?'Top 20 this week · '+_wkResetText()+' · Updates on stage clear':'Top 20 global warriors · Updates on stage clear';
   ['Stage','Combo','Kills'].forEach(t=>{
     const el=document.getElementById('lbTab'+t);
     if(el)el.classList.toggle('on',t.toLowerCase()===_lbField);
@@ -8860,13 +8906,15 @@ async function openLB(field){
   }
   list.innerHTML='<div class="lb-empty">Loading…</div>';
   try{
-    const snap=await _fb.query('leaderboard',_lbField,'desc',20);
-    if(snap.empty){list.innerHTML='<div class="lb-empty">No warriors yet — be the first!</div>';return;}
+    const _f=_lbWeekly?_wkKey()+'_'+_lbField:_lbField;
+    const snap=await _fb.query('leaderboard',_f,'desc',20);
+    if(snap.empty){list.innerHTML=_lbWeekly?'<div class="lb-empty">No scores yet this week. Clear a stage to take first place.</div>':'<div class="lb-empty">No warriors yet — be the first!</div>';return;}
     const rc=['gold','silver','bronze'];
     list.innerHTML=snap.docs.map((d,i)=>{
       const dat=d.data();
       const me=_user&&d.id===_user.uid;
-      const val=_lbField==='stage'?'Stage '+dat.stage:_lbField==='combo'?'×'+dat.combo:(dat.kills||0)+' kills';
+      const v=f=>_lbWeekly?dat[_wkKey()+'_'+f]:dat[f];
+      const val=_lbField==='stage'?'Stage '+v('stage'):_lbField==='combo'?'×'+v('combo'):(v('kills')||0)+' kills';
       return`<div class="lb-row${me?' me':''}">
         <div class="lb-rank ${rc[i]||''}">${i+1}</div>
         <div class="lb-name">${_esc(dat.name||'Warrior')}${me?' (You)':''}</div>
