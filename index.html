@@ -2114,6 +2114,13 @@ function initRain(){
 // ═══════════════════════════════════════════════════════
 const keys={};
 window.addEventListener('keydown',e=>{
+  // Any key on the splash starts the game, the same as a tap anywhere on it.
+  // Desktop visitors who reach for the keyboard used to get no response.
+  if(!_entered&&!e.repeat&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!/^(Shift|Control|Alt|Meta|Tab|Escape)/.test(e.code)){
+    const sp=document.getElementById('splashScreen'),as=document.getElementById('authScreen');
+    const t=document.activeElement&&document.activeElement.tagName;
+    if(sp&&as&&as.classList.contains('active')&&sp.offsetParent!==null&&t!=='INPUT'&&t!=='TEXTAREA'){e.preventDefault();enterGame('key');return;}
+  }
   keys[e.code]=true;
   if(e.code==='Space'||e.code==='KeyZ')doAtk();
   if(e.code==='ArrowUp'||e.code==='KeyW')doJump();
@@ -7871,11 +7878,22 @@ function _countOnce(name,e,extra){
   _ctSeen[name]=1;
   _count(e,extra);
 }
+// Someone who leaves (or switches away) while still on the splash: how long
+// they looked at it first. Under 3 seconds is a bounce or a stray tap on a
+// link; a long wait points at something on the splash itself.
+function _countSplashLeave(){
+  try{
+    if(_entered||!window._arrivedAt)return;
+    const s=(performance.now()-window._arrivedAt)/1000;
+    _countOnce('leave','leave',{k:s<3?'s3':s<10?'s10':s<30?'s30':'long'});
+  }catch(e){}
+}
 window.addEventListener('pagehide',()=>{
   try{ if(gState==='playing')_count('quit',{v:lvl}); }catch(e){}
+  _countSplashLeave();
   _ctFlush();
 });
-document.addEventListener('visibilitychange',()=>{ if(document.hidden)_ctFlush(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){_countSplashLeave();_ctFlush();} });
 
 // Where the visit came from, as one of a fixed set of buckets.
 //
@@ -9014,7 +9032,7 @@ requestAnimationFrame(()=>{
   // splash on 11 Oct, while the game itself loads fine in Facebook. Count the
   // arrival only once the page is actually on screen.
   const _arrive=()=>{
-    if(_arrive.done)return;_arrive.done=true;
+    if(_arrive.done)return;_arrive.done=true;window._arrivedAt=performance.now();
     _count('arrived');
     _countVisitorKind();
     _countSource();

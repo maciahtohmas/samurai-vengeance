@@ -84,7 +84,9 @@ const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 // Traffic source, bucketed on the client so only a known token ever arrives.
 // How a player got past the splash: its button, a tap anywhere else on it, or
 // one of the consent bar's buttons (which now carry on into the game).
-const ENTERS = new Set(['play', 'tap', 'accept', 'decline']);
+const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
+// How long someone sat on the splash before leaving without entering.
+const LEAVES = new Set(['s3', 's10', 's30', 'long']);
 // Interactive tutorial: shown, each step completed, finished, skipped, and
 // replayed from the menu. Where 'shown' and 'move' diverge is the first wall.
 const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'dash', 'clear', 'done', 'skip', 'replay']);
@@ -120,6 +122,10 @@ function fieldFor(body) {
   if (e === 'src') {
     const k = String(body.k || '');
     return SRCS.has(k) ? 's_src_' + k : null;
+  }
+  if (e === 'leave') {
+    const k = String(body.k || '');
+    return LEAVES.has(k) ? 'leave_' + k : null;
   }
   if (e === 'enter') {
     const k = String(body.k || '');
@@ -301,7 +307,7 @@ function renderReport(days, trendDays) {
 
     // Splash exits and tutorial steps. Both shipped 12 Oct, so earlier days
     // show nothing here.
-    const ENTER_LABEL = { play: 'Tapped PLAY NOW', tap: 'Tapped elsewhere on the splash',
+    const ENTER_LABEL = { play: 'Tapped PLAY NOW', tap: 'Tapped elsewhere on the splash', key: 'Pressed a key',
       accept: 'Tapped Accept on the consent bar', decline: 'Tapped Decline on the consent bar' };
     const enters = Object.keys(ENTER_LABEL).map(k => ({ k, n: g('enter_' + k) })).filter(x => x.n);
     const enterTotal = enters.reduce((t, x) => t + x.n, 0);
@@ -309,6 +315,11 @@ function renderReport(days, trendDays) {
       <table class="walls"><tbody>${enters.map(x => `<tr><th>${esc(ENTER_LABEL[x.k])}</th>
         <td class="n">${x.n}</td><td class="pct">${Math.round((x.n / enterTotal) * 100)}%</td></tr>`).join('')}
       </tbody></table>` : '';
+    const LEAVE_LABEL = { s3: 'Under 3 seconds', s10: '3 to 10 seconds', s30: '10 to 30 seconds', long: 'Over 30 seconds' };
+    const leaves = Object.keys(LEAVE_LABEL).map(k => ({ k, n: g('leave_' + k) })).filter(x => x.n);
+    const leaveBlock = leaves.length ? `<h3>Left on the splash, after</h3>
+      <table class="walls"><tbody>${leaves.map(x => `<tr><th>${esc(LEAVE_LABEL[x.k])}</th><td class="n">${x.n}</td></tr>`).join('')}</tbody></table>
+      <p class="note">Includes people who switched apps and came back later.</p>` : '';
     const tShown = g('tut_shown');
     const TUT_ROWS = [['Saw the tutorial', 'shown'], ['Moved', 'move'], ['Jumped', 'jump'],
       ['Defeated an enemy', 'attack'], ['Landed a parry', 'parry'], ['Dashed', 'dash'], ['Cleared the stage', 'clear'], ['Finished it', 'done']];
@@ -331,6 +342,7 @@ function renderReport(days, trendDays) {
       ${diffs ? `<ul class="diffs">${diffs}</ul>` : ''}
       ${g('pad') ? `<p class="note">${g('pad')} connected a game controller.</p>` : ''}
       ${enterBlock}
+      ${leaveBlock}
       ${tutBlock}
       ${socBlock}
       ${srcBlock}
