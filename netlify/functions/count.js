@@ -221,7 +221,7 @@ function renderTrend(days) {
 </section>`;
 }
 
-function renderReport(days, trendDays) {
+function renderReport(days, trendDays, extraTop) {
   const row = (label, n, base) => {
     const pct = base ? Math.round((n / base) * 100) : null;
     const w = base ? Math.max(1.5, (n / base) * 100) : 0;
@@ -409,6 +409,7 @@ footer{color:var(--dim);font-size:11.5px;line-height:1.7;margin-top:22px;}
 <h1>Player funnel</h1>
 <p class="sub">Samurai Vengeance &middot; last ${days.length} days &middot; Pacific</p>
 ${renderTrend(trendDays || days)}
+${extraTop || ''}
 ${blocks}
 <footer>Counts only &mdash; no cookies, no identifiers, nothing stored on any
 visitor's device. Fires for every visitor, not just those who accept the
@@ -481,6 +482,65 @@ function parseForm(event) {
   const o = {}; new URLSearchParams(raw).forEach((v, k) => { o[k] = v; }); return o;
 }
 
+// ── Crash reports ────────────────────────────────────────────────
+// The game sends {e:'err', m, w, s, lv} for uncaught errors. They are kept
+// per day in errors/{day}, one entry per distinct message and location, with
+// a count and a coarse browser bucket derived from the user agent here (the
+// user agent itself is not stored). Capped at 40 distinct entries a day so
+// the public endpoint cannot be used to grow the document without limit.
+const crypto = require('crypto');
+function uaBucket(ua) {
+  ua = String(ua || '');
+  const os = /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS X/.test(ua) ? 'Mac'
+    : /Windows/.test(ua) ? 'Windows' : /Linux|CrOS/.test(ua) ? 'Linux' : 'Other';
+  const br = /FBAN|FBAV|FB_IAB/.test(ua) ? 'Facebook app' : /musical_ly|TikTok|BytedanceWebview/i.test(ua) ? 'TikTok app'
+    : /Instagram/.test(ua) ? 'Instagram app' : /Edg\//.test(ua) ? 'Edge' : /Firefox|FxiOS/.test(ua) ? 'Firefox'
+    : /CriOS|Chrome/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : 'Other';
+  return os + ' ' + br;
+}
+async function recordErrors(db, errs, ua) {
+  const ref = db.collection('errors').doc(today());
+  const snap = await ref.get();
+  const have = snap.exists ? snap.data() : {};
+  const n = Object.keys(have).filter(k => k.startsWith('e_')).length;
+  const payload = {};
+  const b = uaBucket(ua).replace(/[^\w ]/g, '');
+  for (const it of errs) {
+    const m = String(it.m || '').replace(/[\u0000-\u001f]/g, ' ').slice(0, 160);
+    if (!m) continue;
+    const w = String(it.w || '').replace(/[^\w :.-]/g, '').slice(0, 40);
+    const st = /^[a-z]{1,12}$/.test(it.s || '') ? it.s : 'other';
+    const lv = Math.max(0, Math.min(1000, Math.floor(Number(it.lv) || 0)));
+    const h = 'e_' + crypto.createHash('sha1').update(m + '|' + w).digest('hex').slice(0, 12);
+    if (!have[h] && n + Object.keys(payload).length >= 40) continue;
+    const inc = admin.firestore.FieldValue.increment(1);
+    payload[h] = { m, w, n: inc, br: { [b]: inc }, st: { [st]: inc }, lv, last: new Date().toISOString() };
+  }
+  if (Object.keys(payload).length) await ref.set(payload, { merge: true });
+}
+function renderErrors(errDays) {
+  const all = {};
+  for (const d of errDays) {
+    for (const [k, v] of Object.entries(d.data || {})) {
+      if (!k.startsWith('e_') || !v) continue;
+      const a = all[k] || (all[k] = { m: v.m, w: v.w, n: 0, br: {}, st: {}, last: '', lv: 0, days: 0 });
+      a.n += v.n || 0; a.days++;
+      for (const [x, c] of Object.entries(v.br || {})) a.br[x] = (a.br[x] || 0) + c;
+      for (const [x, c] of Object.entries(v.st || {})) a.st[x] = (a.st[x] || 0) + c;
+      if ((v.last || '') > a.last) { a.last = v.last; a.lv = v.lv; }
+    }
+  }
+  const list = Object.values(all).sort((a, b) => b.n - a.n).slice(0, 12);
+  const top = o => Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, c]) => `${esc(k)} ${c}`).join(', ');
+  return `<section>
+  <h2>CRASHES AND ERRORS &middot; LAST 7 DAYS</h2>
+  ${list.length ? `<table class="walls"><thead><tr><th>error</th><th>times</th></tr></thead><tbody>${list.map(e =>
+    `<tr><th style="font-size:12.5px;line-height:1.45;padding-right:8px">${esc(e.m)}<br><span style="color:var(--dim);font-size:11px">${esc(e.w || 'unknown place')} &middot; ${top(e.br)} &middot; while ${top(e.st)}${e.lv ? ' &middot; last on stage ' + e.lv : ''}</span></th><td class="n">${e.n}</td></tr>`).join('')}</tbody></table>
+  <p class="note">Send a screenshot of this section to Claude to get a fix. Each line is one distinct error; the grey text says where in the game file it happened, which browsers hit it, and what the player was doing.</p>`
+  : '<p class="empty">No errors reported. Good.</p>'}
+</section>`;
+}
+
 exports.handler = async (event) => {
   // ---- READ ----
   if (event.httpMethod === 'GET' && (event.queryStringParameters || {}).champions) {
@@ -509,13 +569,18 @@ exports.handler = async (event) => {
     const snaps = await db.getAll(...ids.map(id => db.collection('counters').doc(id)));
     const days = snaps.map((s, i) => ({ id: ids[i], data: s.exists ? s.data() : {} }));
 
+    let errHtml = '';
+    try {
+      const es = await db.getAll(...ids.slice(0, 7).map(id => db.collection('errors').doc(id)));
+      errHtml = renderErrors(es.map(x => ({ data: x.exists ? x.data() : {} })));
+    } catch (e) { errHtml = ''; }
     const thisWk = wkKey(), lastWk = wkKey(new Date(Date.now() - 7 * 864e5));
     const [champs, lastTop, thisTop] = await Promise.all([readChampions(db), topForWeek(db, lastWk), topForWeek(db, thisWk)]);
     const admin = renderChampionAdmin(key, lastWk, thisWk, lastTop, thisTop, champs);
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-      body: renderReport(days.slice(0, 7), days).replace('<footer>', admin + '\n<footer>'),
+      body: renderReport(days.slice(0, 7), days, errHtml).replace('<footer>', admin + '\n<footer>'),
     };
   }
 
@@ -578,10 +643,18 @@ exports.handler = async (event) => {
   // Accept a single event or a small batch, so a page unload can flush
   // everything it has in one beacon.
   const items = Array.isArray(body) ? body.slice(0, 12) : [body];
+  const errs = items.filter(it => it && it.e === 'err').slice(0, 5);
   const inc = {};
   for (const it of items) {
     const f = it && fieldFor(it);
     if (f) inc[f] = (inc[f] || 0) + 1;
+  }
+  if (errs.length) {
+    const db0 = getDb();
+    if (db0) {
+      try { await recordErrors(db0, errs, (event.headers || {})['user-agent']); }
+      catch (err) { console.error('Error report write failed:', err.message); }
+    }
   }
   if (!Object.keys(inc).length) {
     // Nothing recognised. 204 rather than 400: the client is fire-and-forget

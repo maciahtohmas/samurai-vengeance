@@ -2116,6 +2116,34 @@ function initRain(){
 // ═══════════════════════════════════════════════════════
 // INPUT
 // ═══════════════════════════════════════════════════════
+// ── Crash reporting ──────────────────────────────────────────────
+// Uncaught errors, failed promises and errors the game loop swallows are
+// sent to the same anonymous counter as everything else: the message, where
+// in the file it happened, and the game state. No stack trace, no user data;
+// URLs and anything shaped like an email are blanked. At most five distinct
+// reports per page load, so a looping error cannot flood the counter.
+var _errSent={},_errN=0;
+function _reportErr(err,where){
+  try{
+    if(_errN>=5)return;
+    let m=err&&err.message?err.message:(err&&err.reason&&err.reason.message)?err.reason.message:String(err||'');
+    m=String(m).slice(0,160);
+    if(!m||m==='Script error.')return;                       // cross-origin noise, nothing to act on
+    if(/Failed to fetch|Load failed|NetworkError|network connection was lost|offline/i.test(m))return;
+    m=m.replace(/https?:\/\/\S+/g,'<url>').replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,'<email>');
+    let w=where||'';
+    if(!/line/.test(w)&&err&&err.stack){
+      const mm=/:(\d+):(\d+)\)?\s*$/m.exec(String(err.stack).split('\n').slice(1,3).join('\n'));
+      if(mm)w+=(w?' ':'')+'line '+mm[1];
+    }
+    const k=m+'|'+w;if(_errSent[k])return;_errSent[k]=1;_errN++;
+    _count('err',{m,w,s:typeof gState==='string'?gState:'',lv:typeof lvl==='number'?lvl:0});
+    _ctFlush();
+  }catch(e){}
+}
+window.addEventListener('error',e=>_reportErr(e.error||e.message,e.lineno?'line '+e.lineno:''));
+window.addEventListener('unhandledrejection',e=>_reportErr(e.reason,'promise'));
+
 const keys={};
 window.addEventListener('keydown',e=>{
   // Any key on the splash starts the game, the same as a tap anywhere on it.
@@ -6288,7 +6316,7 @@ function loop(ts){
   // preserving that order keeps the first frame and every draw-time
   // assumption identical to the old behaviour.
   try{ drawBG();drawGame();drawFG(); }
-  catch(err){ console.error('[loop] draw error:',err); }
+  catch(err){ console.error('[loop] draw error:',err); _reportErr(err,'draw'); }
 
   try{
     if(ts===undefined)ts=performance.now();
@@ -6307,7 +6335,7 @@ function loop(ts){
     // drop the backlog rather than accumulating a debt it will never repay.
     if(steps>=5)_acc=0;
   }
-  catch(err){ console.error('[loop] frame error:',err); }
+  catch(err){ console.error('[loop] frame error:',err); _reportErr(err,'update'); }
   requestAnimationFrame(loop);
 }
 
