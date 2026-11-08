@@ -23,9 +23,10 @@ samuraivengeance.com.
 
 ## 3. Who can enter
 
-Open to legal residents of the 50 United States and the District of Columbia
-who are 18 or older at the time of entry. Not open to Sponsor, its family
-members, or anyone who helped build the game.
+Open to anyone, anywhere the contest is not prohibited by law, who has a free
+Samurai Vengeance account. Players under 18 need a parent or guardian's
+permission before their display name is used in a social media shoutout. Not
+open to Sponsor, its family members, or anyone who helped build the game.
 
 ## 4. How to enter
 
@@ -50,22 +51,32 @@ award the prize to the next eligible player.
 
 ## 6. Prize
 
-One (1) prize per week: [prize, for example a $25 digital gift card].
-Approximate retail value: $[value]. No cash substitute unless Sponsor chooses
-to offer one. Prizes cannot be transferred. The winner is responsible for any
-taxes on the prize.
+Each week's champion receives:
+
+- the Champion sword style in the game, kept for good;
+- a crown next to their name on the leaderboard until the next champion is
+  crowned;
+- a place on the Hall of Champions page at samuraivengeance.com/champions;
+- a shoutout with their display name on Billfiti Studios' TikTok, if they
+  agree to it.
+
+Once a month, Sponsor may also name a stage in the game after the best weekly
+champion of that month. The name stays on the stage for as long as Sponsor
+runs the game.
+
+Prizes are in-game items and recognition only. They have no cash value, cannot
+be exchanged for money, and cannot be transferred to another account.
 
 ## 7. Notifying the winner
 
-Sponsor will contact the winner by the email address on their account within
-[7] days of the end of the contest week. The winner must reply within [7] days
-and confirm their eligibility (age and state of residence). If the winner does
-not reply in time or is not eligible, the prize goes to the next eligible
-player.
+The champion sees a message in the game the next time they sign in, and the
+crown and sword style appear on their account. Sponsor will email the winner
+at the address on their account to ask whether they want a TikTok shoutout.
+No reply means no shoutout; the other prizes still apply.
 
-The display name of each winner may be posted on samuraivengeance.com and
-Sponsor's social media. Nothing else about the winner is published without
-their permission.
+The display name of each champion is shown on the leaderboard and the Hall of
+Champions page. Nothing else about the winner is published without their
+permission.
 
 ## 8. Privacy
 

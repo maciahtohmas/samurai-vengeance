@@ -889,6 +889,7 @@ canvas{
     </div>
     <div id="lbList"><div class="lb-empty">Loading warriors...</div></div>
     <div id="lbFoot" style="margin-top:8px;text-align:center;font-size:11px;color:rgba(255,255,255,.18);letter-spacing:.1em">Top 20 global warriors · Updates on stage clear</div>
+    <div style="margin-top:6px;text-align:center;font-size:12px"><a href="/champions" target="_blank" rel="noopener" style="color:#fbbf24">👑 Hall of Champions</a></div>
   </div>
 </div>
 
@@ -1172,6 +1173,7 @@ canvas{
       <div class="sw" style="background:#b45309" onclick="setColor('gold')" data-c="gold"></div>
       <div class="sw" style="background:#14532d" onclick="setColor('green')" data-c="green"></div>
       <div class="sw" style="background:#4c1d95" onclick="setColor('purple')" data-c="purple"></div>
+      <div class="sw" id="swChamp" title="Weekly Champion" style="display:none;background:linear-gradient(135deg,#5b0f12 55%,#e8c56a 55%)" onclick="setColor('champion')" data-c="champion"></div>
     </div>
     <div class="lock-ov" id="cLock" style="display:none">
       <span style="font-size:28px">🔒</span>
@@ -2028,7 +2030,9 @@ const STYLES={
   // game, for paying customers only. yellow is not reachable from the UI
   // today but is referenced the same way, so it is defined here too.
   bronze:{k:'#6b4423',ks:'#3d2412',belt:'#2a2a2a',hl:'#d99a4e',blade:'#e8b878',silk:'#8a5a2b'},
-  yellow:{k:'#8a6d1f',ks:'#4a3a0c',belt:'#2a2a2a',hl:'#ffe066',blade:'#ffe98a',silk:'#b8912c'}
+  yellow:{k:'#8a6d1f',ks:'#4a3a0c',belt:'#2a2a2a',hl:'#ffe066',blade:'#ffe98a',silk:'#b8912c'},
+  // Weekly Champion: only unlocked for players who have been crowned.
+  champion:{k:'#5b0f12',ks:'#220406',belt:'#e8c56a',hl:'#ffd76a',blade:'#fff1c2',silk:'#8f1d22'}
 };
 
 // ═══════════════════════════════════════════════════════
@@ -6315,7 +6319,8 @@ function updateHUD(){
   document.getElementById('kiBar').style.width=(P.focus/P.maxFocus*100)+'%';
   document.getElementById('comboBar').style.width=(Math.min(combo/20,1)*100)+'%';
   document.getElementById('cns').textContent=coins;
-  document.getElementById('lvl').textContent=lvl;
+  const _sn=_stageName(lvl);
+  document.getElementById('lvl').textContent=_sn?lvl+' · '+_sn+'\'s stage':lvl;
   document.getElementById('shopG').textContent=coins;
   document.getElementById('phHp').textContent=hpLvl*100;document.getElementById('hpLbl').textContent=hpLvl;
   document.getElementById('phDmg').textContent=dmgLvl*150;document.getElementById('dmgLbl').textContent=dmgLvl;
@@ -6391,6 +6396,7 @@ function startGame(d, fromLvl){
   saveData();
   _count('start',{d:diff});
   _count('s_start',{v:lvl});
+  if(_stageName(lvl))notif(`Stage ${lvl} is named for ${_stageName(lvl)}, a weekly champion 👑`);
   deaths4Ad=0;   // coins kept: see continueGame
   // Stats reset for new game
   ST.gamesPlayed++;
@@ -6416,6 +6422,7 @@ function nextLevel(){
   document.getElementById('lcScreen').classList.remove('active');
   lvl++;highestLvl=Math.max(lvl,highestLvl);
   _count('s_start',{v:lvl});
+  if(_stageName(lvl))notif(`Stage ${lvl} is named for ${_stageName(lvl)}, a weekly champion 👑`);
   // Stats + daily check on level complete
   onCombo(maxCombo);
   dailyCheck();
@@ -6479,8 +6486,9 @@ function openCust(){
   document.getElementById('custP').classList.add('active');
   document.getElementById('cLock').style.display=(highestLvl>=20||isPrem)?'none':'flex';
   document.querySelectorAll('.sw').forEach(s=>s.classList.toggle('sel',s.dataset.c===styleKey));
+  const sc=document.getElementById('swChamp');if(sc)sc.style.display=_isChamp()?'':'none';
 }
-function setColor(c){styleKey=c;saveData();closeP('custP');notif('Style updated!');}
+function setColor(c){if(c==='champion'&&!_isChamp())return;styleKey=c;saveData();closeP('custP');notif('Style updated!');}
 async function buyPrem(){
   if(isPrem){notif('You already have Premium ⭐');return;}
   // openP('authScreen') raised the auth overlay with its card hidden, a black
@@ -7993,6 +8001,7 @@ const ELEMENT_SKINS={
   white:   {name:'Holy',        color:'240,240,255', glow:'#aaccff', unlock:'stage500'},
   bronze:  {name:'Bronze',      color:'200,120,40',  glow:'#cc7722', unlock:'starter_pack'},
   gold:    {name:'Gold',        color:'255,200,0',   glow:'#ffcc00', unlock:'season_pass'},
+  champion:{name:'Champion',    color:'255,190,80',  glow:'#ff4d2e', unlock:'weekly_champion'},
 };
 
 // Current element affects slash colors in COMBO_MOVES at runtime
@@ -8173,7 +8182,33 @@ function loadChapter(ch){
 }
 window.openChapterSelect=openChapterSelect;
 
+// Weekly champions, read through the counter function (see count.js). The
+// owner crowns each week's winner from the stats page; nothing here can grant
+// it. A crowned player keeps the Champion sword style for good, wears a crown
+// on the leaderboard until the next champion is crowned, and monthly winners
+// get a stage named after them.
+var _champs={current:null,history:[],stages:{}};   // var: updateHUD can run before this line during boot
+function _isChamp(){return !!(_champs&&_user&&_champs.history.some(h=>h.uid===_user.uid));}
+function _stageName(n){const v=_champs&&_champs.stages&&_champs.stages[String(n)];return v?String(v).slice(0,24):'';}
+function _champCheck(){
+  try{
+    if(!_user||!_champs.current||_champs.current.uid!==_user.uid)return;
+    const k='sv5_champ_'+_champs.current.week;
+    if(localStorage.getItem(k))return;
+    localStorage.setItem(k,'1');
+    notif('👑 You are this week\'s champion! The Champion sword style is unlocked in Customize.');
+  }catch(e){}
+}
+function _loadChamps(){
+  fetch('/api/count?champions=1').then(r=>r.ok?r.json():null).then(d=>{
+    if(!d)return;
+    _champs={current:d.current||null,history:Array.isArray(d.history)?d.history:[],stages:d.stages||{}};
+    try{updateHUD()}catch(e){}
+    _champCheck();
+  }).catch(()=>{});
+}
 function _updateMenuButtons(){
+  try{_champCheck()}catch(e){}
   try{_refreshSignInBtn()}catch(e){}
   // Store and referral buttons wait until someone has cleared a few stages.
   // Asking for money before the first sword swing is noise to a newcomer.
@@ -8935,7 +8970,7 @@ async function openLB(field){
       const val=_lbField==='stage'?'Stage '+v('stage'):_lbField==='combo'?'×'+v('combo'):(v('kills')||0)+' kills';
       return`<div class="lb-row${me?' me':''}">
         <div class="lb-rank ${rc[i]||''}">${i+1}</div>
-        <div class="lb-name">${_esc(dat.name||'Warrior')}${me?' (You)':''}</div>
+        <div class="lb-name">${_champs.current&&_champs.current.uid===d.id?'👑 ':''}${_esc(dat.name||'Warrior')}${me?' (You)':''}</div>
         <div class="lb-score">${val}</div>
       </div>`;
     }).join('');
@@ -9043,6 +9078,7 @@ requestAnimationFrame(()=>{
     // never batched. Still one request: all three events ride together.
     _ctFlush();
   };
+  _loadChamps();
   if(document.visibilityState==='visible')_arrive();
   else document.addEventListener('visibilitychange',function v(){
     if(document.visibilityState==='visible'){document.removeEventListener('visibilitychange',v);_arrive();}

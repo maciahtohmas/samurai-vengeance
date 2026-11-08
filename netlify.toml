@@ -134,6 +134,12 @@
   force = true
 
 [[redirects]]
+  from = "/champions.html"
+  to = "/champions"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/best-samurai-browser-games.html"
   to = "/best-samurai-browser-games"
   status = 301

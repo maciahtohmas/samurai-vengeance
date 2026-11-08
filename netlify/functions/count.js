@@ -420,8 +420,77 @@ const DIFFS_ORDER = ['easy', 'normal', 'hard'];
 const DIFF_LABEL = { easy: 'on Peace', normal: 'on Warrior', hard: 'on Demon' };
 
 // ── Handler ──────────────────────────────────────────────────────
+// ── Weekly champions ─────────────────────────────────────────────
+// The weekly leaderboard stores each player's best for a week under fields
+// like wk2026w45_stage on leaderboard/{uid}. The owner crowns a winner from
+// the stats page; the list lives in meta/champions and is read through this
+// function (the Admin SDK), so no Firestore rule change is needed and players
+// cannot crown themselves.
+function wkKey(d) {
+  d = d || new Date();
+  const t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  const y = t.getUTCFullYear(), w = Math.ceil(((t - Date.UTC(y, 0, 1)) / 864e5 + 1) / 7);
+  return 'wk' + y + 'w' + String(w).padStart(2, '0');
+}
+async function readChampions(db) {
+  const s = await db.collection('meta').doc('champions').get();
+  const d = s.exists ? s.data() : {};
+  return { history: Array.isArray(d.history) ? d.history : [], stages: d.stages || {} };
+}
+async function topForWeek(db, wk) {
+  try {
+    const q = await db.collection('leaderboard').orderBy(wk + '_stage', 'desc').limit(5).get();
+    return q.docs.map(x => {
+      const v = x.data();
+      return { uid: x.id, name: String(v.name || 'Warrior').slice(0, 40), stage: v[wk + '_stage'] || 0,
+        combo: v[wk + '_combo'] || 0, kills: v[wk + '_kills'] || 0, allTime: v.stage || 0 };
+    });
+  } catch (e) { return []; }
+}
+function renderChampionAdmin(key, lastWk, thisWk, lastTop, thisTop, champs) {
+  const crowned = new Set(champs.history.map(h => h.week));
+  const rows = (list, wk, canCrown) => list.length ? list.map((r, i) => `<tr><th>${i + 1}. ${esc(r.name)}</th>
+      <td class="n">${r.stage}</td><td class="n">&times;${r.combo}</td><td class="n">${r.allTime}</td>
+      <td>${canCrown && !crowned.has(wk) ? `<form method="post" action="?key=${encodeURIComponent(key)}&action=crown" style="margin:0">
+        <input type="hidden" name="uid" value="${esc(r.uid)}"><input type="hidden" name="week" value="${wk}">
+        <button style="font:inherit;font-size:11px;padding:2px 8px;background:#2a1a10;color:var(--gold);border:1px solid var(--line);border-radius:3px">Crown</button></form>` : ''}</td></tr>`).join('')
+    : '<tr><th class="empty">No weekly scores yet.</th></tr>';
+  const head = '<thead><tr><th></th><th>stage</th><th>combo</th><th>all-time</th><th></th></tr></thead>';
+  const hist = champs.history.slice().reverse().slice(0, 8).map(h =>
+    `<tr><th>${esc(h.week)}</th><td>${esc(h.name)}</td><td class="n">${h.stage}</td></tr>`).join('');
+  const stages = Object.keys(champs.stages).map(k => `${esc(k)}: ${esc(champs.stages[k])}`).join(', ');
+  return `<section>
+  <h2>WEEKLY CHAMPION</h2>
+  <h3>Last week (${lastWk}) ${crowned.has(lastWk) ? '&middot; crowned' : ''}</h3>
+  <table class="walls">${head}<tbody>${rows(lastTop, lastWk, true)}</tbody></table>
+  <p class="note">Before crowning, check the score looks believable: compare the weekly stage with the all-time column, and be wary of a brand-new account far ahead of everyone.</p>
+  <h3>This week so far (${thisWk})</h3>
+  <table class="walls">${head}<tbody>${rows(thisTop, thisWk, false)}</tbody></table>
+  ${hist ? `<h3>Past champions</h3><table class="walls"><tbody>${hist}</tbody></table>` : ''}
+  <h3>Name a stage (monthly prize)</h3>
+  <form method="post" action="?key=${encodeURIComponent(key)}&action=stage" style="display:flex;gap:6px;flex-wrap:wrap">
+    <input name="stage" inputmode="numeric" placeholder="Stage" style="width:70px">
+    <input name="name" placeholder="Player name" maxlength="24" style="flex:1;min-width:120px">
+    <button style="font:inherit;padding:2px 10px">Save</button></form>
+  <p class="note">${stages ? 'Named so far: ' + stages : 'No stages named yet.'} Leave the name empty to clear a stage.</p>
+</section>`;
+}
+function parseForm(event) {
+  const raw = event.isBase64Encoded ? Buffer.from(event.body || '', 'base64').toString('utf8') : (event.body || '');
+  const o = {}; new URLSearchParams(raw).forEach((v, k) => { o[k] = v; }); return o;
+}
+
 exports.handler = async (event) => {
   // ---- READ ----
+  if (event.httpMethod === 'GET' && (event.queryStringParameters || {}).champions) {
+    const db = getDb();
+    if (!db) return { statusCode: 503, body: '{}' };
+    const c = await readChampions(db);
+    return { statusCode: 200,
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300' },
+      body: JSON.stringify({ current: c.history[c.history.length - 1] || null, history: c.history, stages: c.stages }) };
+  }
   if (event.httpMethod === 'GET') {
     const key = (event.queryStringParameters || {}).key || '';
     const want = process.env.COUNTER_KEY || '';
@@ -440,16 +509,52 @@ exports.handler = async (event) => {
     const snaps = await db.getAll(...ids.map(id => db.collection('counters').doc(id)));
     const days = snaps.map((s, i) => ({ id: ids[i], data: s.exists ? s.data() : {} }));
 
+    const thisWk = wkKey(), lastWk = wkKey(new Date(Date.now() - 7 * 864e5));
+    const [champs, lastTop, thisTop] = await Promise.all([readChampions(db), topForWeek(db, lastWk), topForWeek(db, thisWk)]);
+    const admin = renderChampionAdmin(key, lastWk, thisWk, lastTop, thisTop, champs);
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
-      body: renderReport(days.slice(0, 7), days),
+      body: renderReport(days.slice(0, 7), days).replace('<footer>', admin + '\n<footer>'),
     };
   }
 
   // ---- WRITE ----
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
+  }
+
+  // Owner actions from the stats page: crown a weekly champion, name a stage.
+  const qs = event.queryStringParameters || {};
+  if (qs.action) {
+    const want = process.env.COUNTER_KEY || '';
+    if (!want || qs.key !== want) return { statusCode: 404, body: 'Not found' };
+    const db = getDb();
+    if (!db) return { statusCode: 500, body: 'Counter unavailable: ' + _initError };
+    const f = parseForm(event);
+    const ref = db.collection('meta').doc('champions');
+    if (qs.action === 'crown' && f.uid && /^wk\d{4}w\d{2}$/.test(f.week || '')) {
+      const lb = await db.collection('leaderboard').doc(f.uid).get();
+      if (lb.exists) {
+        const v = lb.data();
+        await db.runTransaction(async tx => {
+          const cur = await tx.get(ref);
+          const h = (cur.exists && Array.isArray(cur.data().history)) ? cur.data().history : [];
+          if (!h.some(x => x.week === f.week)) {
+            h.push({ week: f.week, uid: f.uid, name: String(v.name || 'Warrior').slice(0, 40),
+              stage: v[f.week + '_stage'] || 0, combo: v[f.week + '_combo'] || 0, at: new Date().toISOString() });
+            tx.set(ref, { history: h.slice(-200) }, { merge: true });
+          }
+        });
+      }
+    } else if (qs.action === 'stage') {
+      const n = Math.floor(Number(f.stage));
+      if (n >= 1 && n <= 1000) {
+        const name = String(f.name || '').replace(/[<>]/g, '').trim().slice(0, 24);
+        await ref.set({ stages: { [String(n)]: name ? name : admin.firestore.FieldValue.delete() } }, { merge: true });
+      }
+    }
+    return { statusCode: 303, headers: { Location: '/api/count?key=' + encodeURIComponent(qs.key) }, body: '' };
   }
 
   // Weak origin check. Trivial to forge, so it is not a security control —
