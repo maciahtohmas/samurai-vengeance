@@ -3459,7 +3459,11 @@ function update(){
   _updateParryCue();
 
   _checkTutorialPrompt();
-  if(enemies.length===0&&gState==='playing'&&performance.now()>=_finishHold){
+  // A new player who defeats both stage 1 enemies early used to end the stage
+  // at step 3, so the parry and dash lessons never showed and the tutorial
+  // never finished (the counter showed 0 finishing it). Hold the stage open
+  // until the tutorial reaches its last step; that step then clears it.
+  if(enemies.length===0&&gState==='playing'&&performance.now()>=_finishHold&&!_tutHoldsClear()){
     // A cleared daily boss goes back to the menu. Showing the stage-complete
     // screen here let "Journey Onward" call nextLevel(), which advanced lvl
     // and highestLvl for a stage the player never played.
@@ -7695,6 +7699,7 @@ function _tutIsDone(){try{return localStorage.getItem(TUT_KEY)==='1';}catch(e){r
 function _tutMarkDone(){try{localStorage.setItem(TUT_KEY,'1');}catch(e){}}
 const _T=(keys,touch)=>()=>_tutInput==='touch'?touch:keys;
 
+function _tutHoldsClear(){try{return !!(_tutActive&&_coachIdx<TUT_STEPS.length&&TUT_STEPS[_coachIdx].id!=='clear');}catch(e){return false;}}
 const TUT_STEPS=[
   {id:'move', btn:['bLeft','bRight'], calm:true,
    text:_T('Move with <kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd> <kbd>D</kbd>',
