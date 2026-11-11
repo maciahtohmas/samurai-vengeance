@@ -5553,7 +5553,10 @@ function drawPlayer(){
 function drawAttackArc(){
   if(P.atk){
     const prog=P.atkT/P.maxAtk;
-    const move=COMBO_MOVES[P.comboStep]||COMBO_MOVES[0];
+    const _mv=COMBO_MOVES[P.comboStep]||COMBO_MOVES[0];
+    // The Champion style is a prize, so it has to show: every swing is drawn
+    // in its own gold and crimson instead of the move's usual colour.
+    const move=styleKey==='champion'?Object.assign({},_mv,{color:ELEMENT_SKINS.champion.color,glow:ELEMENT_SKINS.champion.glow}):_mv;
     const [r,g,b]=move.color.split(',');
     // The whole arc used to be drawn at once on the first frame and then
     // fade in place. That is a flash, not a cut — the shape never moved, so
