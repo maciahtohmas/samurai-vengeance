@@ -1411,8 +1411,10 @@ canvas{
     <div class="rstats" id="goStats"></div>
     <div id="goHighScore" style="font-size:11px;color:rgba(220,180,80,.7);letter-spacing:.15em;margin:4px 0;text-align:center;"></div>
     <div id="goNewBest" style="font-size:13px;color:#fbbf24;letter-spacing:.25em;display:none;text-align:center;margin-bottom:2px;">⭐ NEW PERSONAL BEST!</div>
+    <div id="goTip" style="display:none;max-width:340px;margin:10px auto 16px;padding:10px 14px;border:1px solid rgba(220,180,80,.3);border-radius:6px;background:rgba(220,180,80,.08);font-size:13px;line-height:1.5;color:rgba(255,240,210,.9);text-align:left;"></div>
     <div class="rbtns">
       <button class="rbtn pri" onclick="retryGame()">Retry Stage</button>
+      <button class="rbtn sec" id="goEasier" style="display:none" onclick="retryEasier()"></button>
       <button class="rbtn sec" onclick="shareScore()">📤 Share Score</button>
       <button class="rbtn sec" onclick="goMenu()">Main Menu</button>
     </div>
@@ -3476,6 +3478,7 @@ function update(){
       return;
     }
     gState='lvlcmp';
+    try{_assistCleared();}catch(e){}
     document.getElementById('lcTitle').textContent=lvl%10===0?'BOSS VANQUISHED':'ENEMIES VANQUISHED';
     document.getElementById('lcStats').textContent=`Stage ${lvl} · ${lvlCoins} Coins · Best Combo ×${maxCombo}`;
     document.getElementById('lcScreen').classList.add('active');_bfOnStageClear();sfx.lvl();
@@ -3489,6 +3492,7 @@ function update(){
     _deathAt=performance.now();    // start the collapse; drawPlayer runs it
     document.getElementById('goStats').textContent=`Stage ${lvl} · Best Combo ×${maxCombo}`;
     _showGameOver();
+    try{_bossAssist();}catch(e){}
     _logEvent('player_death',{stage:lvl,difficulty:(diff||'normal'),parry_lvl:pryLvl,hp_lvl:hpLvl});
     _count('death',{v:lvl});
     try{ const _k=_dcKey(lvl); ST.deathsByStage[_k]=(ST.deathsByStage[_k]||0)+1; saveST(); }catch(e){}
@@ -6468,10 +6472,60 @@ function nextLevel(){
   if(!_noAds()&&lvl%MONEY.interstitialEvery===0)showAd(()=>{gState='playing';initLevel();});
   else{gState='playing';initLevel();}
 }
+// ── Boss assist ──────────────────────────────────────────────────
+// A player who keeps losing to the same boss gets help on the game over
+// screen instead of nothing: a tip after the third loss in a row, and after
+// the fifth an offer to retry that one stage a difficulty lower. The lower
+// setting lasts until the stage is cleared or they leave for the menu, then
+// their own choice comes back. Nothing about the fight itself changes.
+var _stageLoss={},_diffRestore=null;
+const BOSS_TIPS=[
+  'Parry the club the moment before it lands. The boss staggers, and your next swing is a Punish that hits twice as hard.',
+  'Below half health the boss moves faster and fires three shots at once. Dash through them: you can’t be hurt while dashing.',
+  'Every hit you land fills your Ki bar. Save a full bar for Phase II, when the Ki strike counts the most.',
+  'Don’t chase the boss. Let it come to you, parry, then hit back with the Punish.'
+];
+function _bossAssist(){
+  const tip=document.getElementById('goTip'),btn=document.getElementById('goEasier');
+  if(tip)tip.style.display='none';
+  if(btn)btn.style.display='none';
+  if(_lastRunDaily||lvl%10!==0)return;
+  const k=lvl+'|'+diff,n=_stageLoss[k]=(_stageLoss[k]||0)+1;
+  if(n>=3&&tip){
+    tip.textContent='Tip: '+BOSS_TIPS[(n-3)%BOSS_TIPS.length];
+    tip.style.display='block';
+    if(n===3)_count('assist',{k:'hint'});
+  }
+  const easier={hard:'normal',normal:'easy'}[diff];
+  if(n>=5&&easier&&btn){
+    btn.textContent='Try this stage on '+_diffName(easier);
+    btn.style.display='';
+    if(n===5)_count('assist',{k:'offer'});
+  }
+}
+function retryEasier(){
+  const easier={hard:'normal',normal:'easy'}[diff];
+  if(!easier){retryGame();return;}
+  if(!_diffRestore)_diffRestore=diff;
+  diff=easier;saveData();
+  _count('assist',{k:'easier'});
+  notif('This stage on '+_diffName(diff)+'. '+_diffName(_diffRestore)+' comes back after you clear it.');
+  retryGame();
+}
+function _assistRestore(cleared){
+  if(!_diffRestore)return;
+  diff=_diffRestore;_diffRestore=null;saveData();
+  if(cleared)notif('Back on '+_diffName(diff)+' for the next stage.');
+}
+function _assistCleared(){
+  delete _stageLoss[lvl+'|'+diff];
+  if(_diffRestore){_count('assist',{k:'cleared'});_assistRestore(true);}
+}
 function retryGame(){document.getElementById('goScreen').classList.remove('active');
   if(_lastRunDaily){_lastRunDaily=false;startDailyBoss();return;}
   gState='playing';deaths4Ad=0;P.hp=P.maxHp;P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;combo=0;comboT=0;initLevel();}
 function goMenu(){
+  try{_assistRestore(false);}catch(e){}
   saveData(); // persist progress before going to menu
   _releaseWakeLock();
   P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;

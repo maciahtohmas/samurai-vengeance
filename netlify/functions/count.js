@@ -86,6 +86,9 @@ const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 // one of the consent bar's buttons (which now carry on into the game).
 // The Indigo Ronin comics: opened from the game menu, opened issue N, reached
 // the end of issue N.
+// Boss assist: tip shown after 3 losses, easier retry offered after 5, taken,
+// and the stage then cleared on the easier setting.
+const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
@@ -125,6 +128,10 @@ function fieldFor(body) {
   if (e === 'src') {
     const k = String(body.k || '');
     return SRCS.has(k) ? 's_src_' + k : null;
+  }
+  if (e === 'assist') {
+    const k = String(body.k || '');
+    return ASSISTS.has(k) ? 'assist_' + k : null;
   }
   if (e === 'comic') {
     const k = String(body.k || '');
@@ -322,6 +329,14 @@ function renderReport(days, trendDays, extraTop) {
       <table class="walls"><tbody>${enters.map(x => `<tr><th>${esc(ENTER_LABEL[x.k])}</th>
         <td class="n">${x.n}</td><td class="pct">${Math.round((x.n / enterTotal) * 100)}%</td></tr>`).join('')}
       </tbody></table>` : '';
+    const asN = ['hint','offer','easier','cleared'].map(k => g('assist_' + k));
+    const assistBlock = asN.some(Boolean) ? `<h3>Boss help</h3>
+      <table class="walls"><tbody>
+        <tr><th>Saw a tip (3 losses to a boss)</th><td class="n">${asN[0]}</td></tr>
+        <tr><th>Offered an easier retry (5 losses)</th><td class="n">${asN[1]}</td></tr>
+        <tr><th>Took it</th><td class="n">${asN[2]}</td></tr>
+        <tr><th>Then beat the boss</th><td class="n">${asN[3]}</td></tr>
+      </tbody></table>` : '';
     const comicN = ['menu','i1','end1','i2','end2'].map(k => g('comic_' + k));
     const comicBlock = comicN.some(Boolean) ? `<h3>Comics</h3>
       <table class="walls"><tbody>
@@ -358,6 +373,7 @@ function renderReport(days, trendDays, extraTop) {
       ${enterBlock}
       ${leaveBlock}
       ${comicBlock}
+      ${assistBlock}
       ${tutBlock}
       ${socBlock}
       ${srcBlock}
