@@ -89,6 +89,10 @@ const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 // Boss assist: tip shown after 3 losses, easier retry offered after 5, taken,
 // and the stage then cleared on the easier setting.
 const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
+// Coming back: daily gift claimed; home-screen card shown (prompt or iPhone
+// instructions), accepted, dismissed, put off, installed.
+const GIFTS = new Set(['claim']);
+const A2HS = new Set(['shown', 'ios', 'accepted', 'dismissed', 'later', 'installed']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
@@ -132,6 +136,14 @@ function fieldFor(body) {
   if (e === 'assist') {
     const k = String(body.k || '');
     return ASSISTS.has(k) ? 'assist_' + k : null;
+  }
+  if (e === 'gift') {
+    const k = String(body.k || '');
+    return GIFTS.has(k) ? 'gift_' + k : null;
+  }
+  if (e === 'a2hs') {
+    const k = String(body.k || '');
+    return A2HS.has(k) ? 'a2hs_' + k : null;
   }
   if (e === 'comic') {
     const k = String(body.k || '');
@@ -337,6 +349,14 @@ function renderReport(days, trendDays, extraTop) {
         <tr><th>Took it</th><td class="n">${asN[2]}</td></tr>
         <tr><th>Then beat the boss</th><td class="n">${asN[3]}</td></tr>
       </tbody></table>` : '';
+    const backN = ['gift_claim','a2hs_shown','a2hs_ios','a2hs_accepted','a2hs_dismissed','a2hs_later','a2hs_installed'].map(k => g(k));
+    const backBlock = backN.some(Boolean) ? `<h3>Coming back</h3>
+      <table class="walls"><tbody>
+        <tr><th>Claimed a daily return gift</th><td class="n">${backN[0]}</td></tr>
+        <tr><th>Saw the home-screen card (install / iPhone)</th><td class="n">${backN[1]} / ${backN[2]}</td></tr>
+        <tr><th>Install: yes / no / not now</th><td class="n">${backN[3]} / ${backN[4]} / ${backN[5]}</td></tr>
+        <tr><th>Installed</th><td class="n">${backN[6]}</td></tr>
+      </tbody></table>` : '';
     const comicN = ['menu','i1','end1','i2','end2'].map(k => g('comic_' + k));
     const comicBlock = comicN.some(Boolean) ? `<h3>Comics</h3>
       <table class="walls"><tbody>
@@ -374,6 +394,7 @@ function renderReport(days, trendDays, extraTop) {
       ${leaveBlock}
       ${comicBlock}
       ${assistBlock}
+      ${backBlock}
       ${tutBlock}
       ${socBlock}
       ${srcBlock}
