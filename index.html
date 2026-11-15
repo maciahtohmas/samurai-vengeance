@@ -715,6 +715,7 @@ canvas{
         <button class="mbtn" onclick="openDaily()"><span class="mi">⚡</span>Daily</button>
         <button class="mbtn" onclick="openProfile()"><span class="mi">👤</span>Profile</button>
         <button class="mbtn" onclick="openAchievements()"><span class="mi">🏆</span>Achievements</button>
+        <button class="mbtn" id="comicsBtn" onclick="openComics()"><span class="mi">📖</span>Comics</button>
         <button class="mbtn mbtn-later" onclick="openP('seasonP')"><span class="mi">⚡</span>Season Pass</button>
         <button class="mbtn" id="dailyBossBtn" onclick="startDailyBoss()" style="display:none;pointer-events:auto;"><span class="mi">☠</span>Daily Boss</button>
         <button class="mbtn mbtn-later" id="starterBtn" onclick="openStarterBundle()" style="display:none;pointer-events:auto;"><span class="mi">⚔️</span>Starter Bundle · $0.99</button>
@@ -735,6 +736,7 @@ canvas{
         <a href="/how-to-play" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">How to Play</a>
         <a href="/boss-guide" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Boss Guide</a>
         <a href="/enemy-guide" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Enemy Guide</a>
+        <a href="/comics" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Comics</a>
         <a href="/devlog" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Dev Notes</a>
         <a href="/contact" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Contact</a>
         <a href="/privacy" style="color:rgba(236,214,168,.55);text-decoration:none;margin:0 7px;">Privacy</a>
@@ -8243,7 +8245,14 @@ function _loadChamps(){
     _champCheck();
   }).catch(()=>{});
 }
+// The Indigo Ronin comics live on their own pages. Opened in a new tab so the
+// game keeps its place. Hidden in portal builds, which only ship the game.
+function openComics(){
+  try{_count('comic',{k:'menu'});_ctFlush();}catch(e){}
+  window.open('/comics','_blank','noopener');
+}
 function _updateMenuButtons(){
+  try{const cb=document.getElementById('comicsBtn');if(cb&&typeof CRAZYGAMES_BUILD!=='undefined'&&CRAZYGAMES_BUILD)cb.style.display='none';}catch(e){}
   try{_champCheck()}catch(e){}
   try{_refreshSignInBtn()}catch(e){}
   // Store and referral buttons wait until someone has cleared a few stages.

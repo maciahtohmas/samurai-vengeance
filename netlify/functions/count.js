@@ -84,6 +84,9 @@ const KINDS  = new Set(['new', 'same', 'd1', 'd7', 'old']);
 // Traffic source, bucketed on the client so only a known token ever arrives.
 // How a player got past the splash: its button, a tap anywhere else on it, or
 // one of the consent bar's buttons (which now carry on into the game).
+// The Indigo Ronin comics: opened from the game menu, opened issue N, reached
+// the end of issue N.
+const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
 const LEAVES = new Set(['s3', 's10', 's30', 'long']);
@@ -122,6 +125,10 @@ function fieldFor(body) {
   if (e === 'src') {
     const k = String(body.k || '');
     return SRCS.has(k) ? 's_src_' + k : null;
+  }
+  if (e === 'comic') {
+    const k = String(body.k || '');
+    return COMICS.has(k) ? 'comic_' + k : null;
   }
   if (e === 'leave') {
     const k = String(body.k || '');
@@ -315,6 +322,13 @@ function renderReport(days, trendDays, extraTop) {
       <table class="walls"><tbody>${enters.map(x => `<tr><th>${esc(ENTER_LABEL[x.k])}</th>
         <td class="n">${x.n}</td><td class="pct">${Math.round((x.n / enterTotal) * 100)}%</td></tr>`).join('')}
       </tbody></table>` : '';
+    const comicN = ['menu','i1','end1','i2','end2'].map(k => g('comic_' + k));
+    const comicBlock = comicN.some(Boolean) ? `<h3>Comics</h3>
+      <table class="walls"><tbody>
+        <tr><th>Opened from the game menu</th><td class="n">${comicN[0]}</td></tr>
+        <tr><th>Issue 1: opened / finished</th><td class="n">${comicN[1]} / ${comicN[2]}</td></tr>
+        <tr><th>Issue 2: opened / finished</th><td class="n">${comicN[3]} / ${comicN[4]}</td></tr>
+      </tbody></table>` : '';
     const LEAVE_LABEL = { s3: 'Under 3 seconds', s10: '3 to 10 seconds', s30: '10 to 30 seconds', long: 'Over 30 seconds' };
     const leaves = Object.keys(LEAVE_LABEL).map(k => ({ k, n: g('leave_' + k) })).filter(x => x.n);
     const leaveBlock = leaves.length ? `<h3>Left on the splash, after</h3>
@@ -343,6 +357,7 @@ function renderReport(days, trendDays, extraTop) {
       ${g('pad') ? `<p class="note">${g('pad')} connected a game controller.</p>` : ''}
       ${enterBlock}
       ${leaveBlock}
+      ${comicBlock}
       ${tutBlock}
       ${socBlock}
       ${srcBlock}

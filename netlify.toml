@@ -134,6 +134,24 @@
   force = true
 
 [[redirects]]
+  from = "/comics.html"
+  to = "/comics"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/indigo-ronin-1.html"
+  to = "/indigo-ronin-1"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/indigo-ronin-2.html"
+  to = "/indigo-ronin-2"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/champions.html"
   to = "/champions"
   status = 301

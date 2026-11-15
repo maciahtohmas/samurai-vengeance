@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Indigo Ronin: Free Comics | Samurai Vengeance</title>
+<meta name="description" content="The Indigo Ronin: free illustrated comics set in the world of Samurai Vengeance. Read them in your browser.">
+<link rel="canonical" href="https://samuraivengeance.com/comics">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="The Indigo Ronin: Free Comics | Samurai Vengeance">
+<meta property="og:description" content="The Indigo Ronin: free illustrated comics set in the world of Samurai Vengeance. Read them in your browser.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://samuraivengeance.com/comics">
+<meta property="og:image" content="https://samuraivengeance.com/comic-art/indigo-ronin-1/00-cover.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/comic-art/indigo-ronin-1/00-cover.jpg">
+<meta name="theme-color" content="#0a0a0c">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0c;--bg-2:#121216;--ink:#e8e4dc;--ink-dim:#9b958a;--ink-faint:#6a6458;--rule:#2a2a30;--accent:#c0472f;--maxw:760px;color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"EB Garamond",Georgia,"Times New Roman",serif;font-size:clamp(18px,1.15rem + .35vw,22px);line-height:1.62;overflow-x:hidden}
+#bar{position:fixed;top:0;left:0;height:2px;width:0;background:var(--accent);z-index:60;transition:width .12s linear}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px}
+.cover{position:relative;margin:0 auto;max-width:var(--maxw)}
+.cover img{display:block;width:100%;height:auto}
+.cover::after{content:"";position:absolute;inset:auto 0 0 0;height:62%;background:linear-gradient(to bottom,rgba(10,10,12,0) 0%,rgba(10,10,12,.55) 45%,var(--bg) 100%);pointer-events:none}
+.cover-text{position:relative;z-index:2;margin-top:-26vw;padding:0 16px;text-align:center}
+@media (min-width:760px){.cover-text{margin-top:-190px}}
+.kicker{font-size:.62em;letter-spacing:.34em;text-transform:uppercase;color:var(--ink-dim);margin:0 0 .9em}
+h1{font-weight:600;font-size:clamp(2.4rem,11vw,4.2rem);line-height:1.02;margin:0;letter-spacing:.01em;text-shadow:0 2px 30px rgba(0,0,0,.85)}
+.byline{margin:.7em 0 0;color:var(--ink-dim);font-style:italic;font-size:.82em}
+.issue{margin:2.4em 0 0;font-size:.66em;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-faint)}
+.rule{width:56px;height:1px;background:var(--rule);margin:2.6em auto}
+.page{margin:0 auto;padding:clamp(34px,8vw,70px) 0 0}
+figure{margin:0}
+.art{position:relative;width:100%;background:var(--bg-2);border-radius:3px;overflow:hidden;box-shadow:0 14px 48px rgba(0,0,0,.55)}
+.art img{display:block;width:100%;height:auto}
+.num{display:block;margin:0 0 .9em;font-size:.6em;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-faint)}
+figcaption{margin:clamp(20px,4.4vw,34px) 0 0;color:var(--ink)}
+figcaption p{margin:0}
+figcaption p+p{margin-top:.75em}
+.drop::first-letter{float:left;font-size:3.1em;line-height:.82;padding:.06em .1em 0 0;color:var(--ink)}
+.end{text-align:center;padding:clamp(60px,14vw,120px) 16px clamp(50px,10vw,90px);border-top:1px solid var(--rule);margin-top:clamp(50px,11vw,96px)}
+.end .mark{font-size:.62em;letter-spacing:.42em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 2.2em}
+.next{font-size:1.02em;color:var(--ink-dim);margin:0 0 .35em;font-style:italic}
+.next strong{color:var(--ink);font-style:normal;font-weight:600}
+.ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:2.6em}
+.cta{display:inline-block;padding:.78em 1.9em;border:1px solid var(--rule);border-radius:2px;color:var(--ink);text-decoration:none;font-size:.66em;letter-spacing:.26em;text-transform:uppercase;transition:border-color .2s,color .2s}
+.cta.pri{border-color:var(--accent);color:#fff;background:rgba(192,71,47,.18)}
+.cta:hover,.cta:focus-visible{border-color:var(--accent);color:#fff;outline:none}
+.colophon{margin:3.4em auto 0;max-width:46ch;font-size:.62em;line-height:1.75;color:var(--ink-faint);letter-spacing:.02em}
+.sitefoot{text-align:center;font-size:.6em;color:var(--ink-faint);margin:0 0 40px}
+.sitefoot a{color:var(--ink-dim)}
+.rv{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}#bar{transition:none}}
+</style>
+<style>
+.intro{text-align:center;padding:clamp(40px,9vw,80px) 0 10px}
+.intro p{color:var(--ink-dim);max-width:48ch;margin:1em auto 0;font-size:.9em}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin:40px 0 70px}
+.card{display:block;background:var(--bg-2);border:1px solid var(--rule);border-radius:4px;overflow:hidden;color:var(--ink);text-decoration:none;transition:border-color .2s}
+.card:hover,.card:focus-visible{border-color:var(--accent);outline:none}
+.card img{display:block;width:100%;height:auto;aspect-ratio:3/4;object-fit:cover}
+.ct{display:grid;gap:2px;padding:14px 16px 18px}
+.ct .kicker{margin:0}
+.ct strong{font-size:1.25em;font-weight:600}
+.read{color:var(--ink-dim);font-size:.8em}
+.soon{text-align:center;color:var(--ink-faint);font-size:.75em;letter-spacing:.2em;text-transform:uppercase;margin:-40px 0 60px}
+</style>
+<!--sitenav-css-->
+<style>
+  .sitenav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(10,0,8,.94);
+    border-bottom:1px solid rgba(201,149,42,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .sitenav-in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  .sitenav-home{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9952a;text-decoration:none;white-space:nowrap}
+  .sitenav-home:hover{color:#fbbf24}
+  .sitenav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 auto;min-width:0;order:2}
+  .sitenav-links::-webkit-scrollbar{display:none}
+  .sitenav-links a{font-size:14px;color:rgba(236,214,168,.78);text-decoration:none;padding:7px 10px;border-radius:3px;white-space:nowrap}
+  .sitenav-links a:hover{color:#fbbf24;background:rgba(201,149,42,.08)}
+  .sitenav-links a[aria-current="page"]{color:#fbbf24;background:rgba(201,149,42,.14)}
+  .sitenav-play{order:3;margin-left:auto;display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#7c4a00,#c9952a);
+    color:#150c02;text-decoration:none;border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;white-space:nowrap}
+  .sitenav-play:hover{filter:brightness(1.12)}
+  .sitenav a:focus-visible{outline:2px solid #fbbf24;outline-offset:2px}
+  @media (max-width:640px){
+    .sitenav-in{padding:8px 16px}
+    .sitenav-play{order:2}
+    .sitenav-links{order:3;flex-basis:100%;margin:0 -6px}
+  }
+</style>
+<!--/sitenav-css-->
+</head>
+<body>
+<!--sitenav-->
+<nav class="sitenav" aria-label="Site"><div class="sitenav-in"><a class="sitenav-home" href="/">&#9876; Samurai Vengeance</a><div class="sitenav-links"><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemies</a><a href="/how-to-play">How to Play</a><a href="/comics" aria-current="page">Comics</a><a href="/devlog">Dev Notes</a><a href="/about">About</a></div><a class="sitenav-play" href="/?ref=comic">&#9654; Play</a></div></nav>
+<!--/sitenav-->
+<div id="bar" aria-hidden="true"></div>
+<main class="wrap"><div class="intro"><p class="kicker">Samurai Vengeance</p><h1>The Indigo<br>Ronin</h1>
+<p>A retainer loses his lord, his house and his name in one night, and goes up the mountain to find the men who took them. Free illustrated comics, set in the world of the game.</p></div>
+<div class="cards">
+<a class="card" href="/indigo-ronin-1">
+  <img src="/comic-art/indigo-ronin-1/00-cover.jpg" alt="A ronin in indigo armour stands at a cliff torii gate, watching his lord&#x27;s mountain fortress burn under a full moon." width="1179" height="1373" loading="eager">
+  <span class="ct"><span class="kicker">Issue 1</span><strong>The Awakening</strong><span class="read">Read free &rarr;</span></span>
+</a>
+<a class="card" href="/indigo-ronin-2">
+  <img src="/comic-art/indigo-ronin-2/06.jpg" alt="A samurai in indigo armour stands at the edge of red flooded rice terraces below a lantern-lit red fortress, a blood moon behind it." width="896" height="1194" loading="lazy">
+  <span class="ct"><span class="kicker">Issue 2</span><strong>Blood Fields</strong><span class="read">Read free &rarr;</span></span>
+</a>
+</div><p class="soon">Issue Three &middot; The Twin &middot; coming soon</p></main>
+<p class="sitefoot"><a href="/">Play</a> &middot; <a href="/comics">Comics</a> &middot; <a href="/how-to-play">How to Play</a> &middot; <a href="/about">About</a> &middot; <a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a></p>
+<script>(function(){var bar=document.getElementById('bar');addEventListener('scroll',function(){var h=document.documentElement.scrollHeight-innerHeight;bar.style.width=(h>0?Math.min(100,scrollY/h*100):0)+'%';},{passive:true});})();</script>
+</body>
+</html>
