@@ -99,7 +99,7 @@ const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 const LEAVES = new Set(['s3', 's10', 's30', 'long']);
 // Interactive tutorial: shown, each step completed, finished, skipped, and
 // replayed from the menu. Where 'shown' and 'move' diverge is the first wall.
-const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'dash', 'clear', 'done', 'skip', 'replay']);
+const TUTS   = new Set(['shown', 'move', 'jump', 'attack', 'parry', 'dash', 'clear', 'done', 'skip', 'replay', 'saved']);
 // Billfiti Studios follow buttons: which platform, and which screen.
 const SOCIALS = new Set(['tiktok', 'instagram', 'youtube', 'discord', 'x', 'bluesky']);
 const SOCIAL_AT = new Set(['menu', 'revive', 'gameover', 'stage']);
@@ -374,7 +374,7 @@ function renderReport(days, trendDays, extraTop) {
       ['Defeated an enemy', 'attack'], ['Landed a parry', 'parry'], ['Dashed', 'dash'], ['Cleared the stage', 'clear'], ['Finished it', 'done']];
     const tutBlock = tShown ? `<h3>Tutorial</h3>
       <table class="funnel"><tbody>${TUT_ROWS.map(([l, k]) => row(l, g('tut_' + k), tShown)).join('')}</tbody></table>
-      <p class="note">${g('tut_skip')} skipped it. ${g('tut_replay')} replayed it from the menu.</p>` : '';
+      <p class="note">${g('tut_skip')} skipped it. ${g('tut_replay')} replayed it from the menu. ${g('tut_saved')} would have died in it and were kept alive.</p>` : '';
 
     const SOC_LABEL = { tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube',
       discord: 'Discord', x: 'X', bluesky: 'Bluesky' };

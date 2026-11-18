@@ -3506,6 +3506,17 @@ function update(){
     document.getElementById('lcStats').textContent=`Stage ${lvl} · ${lvlCoins} Coins · Best Combo ×${maxCombo}`;
     document.getElementById('lcScreen').classList.add('active');_bfOnStageClear();sfx.lvl();
   }
+  // Nobody dies while the tutorial is still teaching them. A first-time
+  // player on Warrior did every step, move to dash, and still lost stage 1:
+  // the worst possible first run. Health stops at 1 instead, with a short
+  // breather and a parry tip, until the tutorial ends.
+  if(P.hp<=0&&gState==='playing'&&_tutActive&&lvl===1){
+    P.hp=1;P.inv=Math.max(P.inv,90);P.vy=Math.min(P.vy,-4);
+    addFloat(P.x+P.w/2,P.y-10,'SAVED','#60a5fa');
+    _tutSavedT=240;_tutLastHtml='';
+    if(!_tutSavedSent){_tutSavedSent=true;_count('tut',{k:'saved'});}
+    updateHUD();
+  }
   if(P.hp<=0&&gState==='playing'){
     _devApplyGodMode();if(_devGodMode)return;
     _lastRunDaily=_inDailyBossRun;
@@ -7867,6 +7878,7 @@ _bfRender();
 const TUT_KEY='sv5_tut_done';
 let _tutPending=false,_tutActive=false,_coachIdx=0,_tutBase=null,_tutDoneT=0,_tutFinishT=0;
 let _tutStepT=0,_tutHint='',_tutArrowT=0,_tutPrevParry=false;
+let _tutSavedT=0,_tutSavedSent=false;
 let _tutInput=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)?'touch':'keys';
 function _tutIsDone(){try{return localStorage.getItem(TUT_KEY)==='1';}catch(e){return false;}}
 function _tutMarkDone(){try{localStorage.setItem(TUT_KEY,'1');}catch(e){}}
@@ -7935,6 +7947,7 @@ function _tutRender(){
     if(_tutDoneT>0){txt='<span class="tut-ok">&#10003; Done</span>';}
     else{txt=s.text();hint=s.hint?s.hint(_tutStepT,_tutBase):'';glow=s.btn;}
   }
+  if(_tutSavedT>0){_tutSavedT--;hint='Close one! The tutorial kept you alive. Tap the shield just before a hit lands to parry it.';}
   // Rendered every tick for the live enemy count and hints, so only touch
   // the DOM when something actually changed.
   const html=step+'|'+txt+'|'+hint+'|'+skip;
@@ -7951,7 +7964,7 @@ function _tutStartStep(){
   if(_coachIdx<TUT_STEPS.length)_tutBase=TUT_STEPS[_coachIdx].begin();
 }
 function _tutBegin(){
-  _tutPending=false;_tutActive=true;_coachIdx=0;_tutDoneT=0;_tutFinishT=0;_tutLastHtml='';
+  _tutPending=false;_tutActive=true;_coachIdx=0;_tutDoneT=0;_tutFinishT=0;_tutLastHtml='';_tutSavedT=0;_tutSavedSent=false;
   _tutStartStep();
   _count('tut',{k:'shown'});
   _tutRender();
