@@ -2011,6 +2011,7 @@ function _impactFX(x,y,o){
 function _parryFX(str){
   str=str||1;
   _impactFX(P.x+P.w/2+P.face*14,P.y+P.h*.42,{str,dir:P.face,flash:.3*Math.min(1.3,str),zoom:.045*str});
+  _clashSparks(P.x+P.w/2+P.face*16,P.y+P.h*.42,P.face,Math.round(9+5*Math.min(str,2)));
   try{sfx.parryRing(str);}catch(e){}
 }
 // Last hit on a boss: freeze, a big gold burst, a deep boom, and the stage
@@ -2517,6 +2518,7 @@ function _shieldBlocked(e){
   shake(4);
   if(CFG.sfx){try{tone(820,'square',.04,.14,.001);tone(1240,'triangle',.06,.1,.001);}catch(err){}}
   spawnP(e.x+e.w/2+e.face*16,e.y+e.h/2,'#cbd5e1',8);
+  _clashSparks(e.x+e.w/2+e.face*16,e.y+e.h/2,-e.face,8);
   addFloat(e.x+e.w/2,e.y-6,'BLOCKED','#94a3b8');
   // Taught once, at the moment it matters, instead of in a rules screen.
   if(!_shieldHintShown){
@@ -2811,7 +2813,7 @@ function initLevel(){
   // updateBoss() shows it again on the first frame of a real boss stage.
   _updateBossBar(null);
   try{ const _k=_dcKey(lvl); ST.attemptsByStage[_k]=(ST.attemptsByStage[_k]||0)+1; }catch(e){}
-  enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];
+  enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];_embers=[];
   slashes=[];blasts=[];bloodSplats=[];splashes=[];corpses=[];
   combo=0;comboT=0;maxCombo=Math.max(maxCombo,0);lvlCoins=0;lvlStartT=gt;P.trail=[];P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
   _prevLvlCoins=0;
@@ -3458,6 +3460,7 @@ function update(){
 
   particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=.04;p.life--;});
   particles=particles.filter(p=>p.life>0);
+  _updEmbers();
   bloodSplats.forEach(b=>{
     if(b.settled){b.life--;return;}          // pooled — nothing left to simulate
     b.x+=b.vx;b.y+=b.vy;b.vy+=(b.g||.2);b.vx*=.985;
@@ -3947,6 +3950,7 @@ function drawBG(){
   fog.addColorStop(.45,`rgba(${scene.haze},.38)`);
   fog.addColorStop(1,'transparent');
   bx.fillStyle=fog;bx.fillRect(0,H*.7,W,H*.16);
+  _drawFog(bx,W,H,scene.haze);
 
   // Earth plane. Without this the sky gradient showed straight through the
   // lower third of the screen — a pale band sitting behind the platforms
@@ -4257,6 +4261,7 @@ function drawGame(){
     gx.globalAlpha=p.life/45;gx.fillStyle=p.color;
     gx.beginPath();gx.arc(p.x,p.y,p.size,0,Math.PI*2);gx.fill();
   });gx.globalAlpha=1;
+  _drawEmbers();
 
   // Blast effects
   blasts.forEach(b=>{
@@ -4718,9 +4723,36 @@ function _drawLedgeBody(l,st){
   }
   g.restore();
 }
+function _ledgeLantern(l){
+  // Roughly two ledges in five carry a paper lantern hung from one end. The
+  // flame flickers on its own rhythm, and a warm pool of light spills over
+  // the underside of the ledge and the air below it.
+  const R=i=>_ledgeRand(l,i);
+  if(l.isGround||l.w<90||R(41)>.42)return;
+  const t=performance.now()/1000,left=R(42)<.5;
+  const ax=left?l.x+14:l.x+l.w-14,ay=l.y+l.h,len=10+R(43)*8,sw=Math.sin(t*1.1+l.x*.03)*1.5;
+  const lx=ax+sw,ly=ay+len;
+  const fl=.82+.12*Math.sin(t*9+l.x)+.06*Math.sin(t*23+l.y);
+  const g=gx;g.save();
+  g.globalCompositeOperation='lighter';
+  g.globalAlpha=.75*fl;_backlight(lx,ly+9,46,'lamp');
+  g.globalAlpha=.9*fl;_backlight(lx,ly+9,16,'lamp');
+  g.globalCompositeOperation='source-over';g.globalAlpha=1;
+  g.strokeStyle='rgba(30,20,14,.9)';g.lineWidth=1;
+  g.beginPath();g.moveTo(ax,ay);g.lineTo(lx,ly);g.stroke();
+  g.fillStyle='#1c120c';g.fillRect(lx-4,ly,8,2.5);g.fillRect(lx-4,ly+15.5,8,2.5);
+  const body=g.createLinearGradient(lx-7,0,lx+7,0);
+  body.addColorStop(0,`rgba(150,40,22,${.95})`);body.addColorStop(.5,`rgba(${Math.round(235*fl)},${Math.round(120*fl)},50,1)`);body.addColorStop(1,'rgba(150,40,22,.95)');
+  g.fillStyle=body;g.beginPath();g.ellipse(lx,ly+9,7,7.5,0,0,Math.PI*2);g.fill();
+  g.strokeStyle='rgba(60,18,10,.55)';g.lineWidth=.8;
+  g.beginPath();g.ellipse(lx,ly+9,7,7.5,0,0,Math.PI*2);g.stroke();
+  g.beginPath();g.moveTo(lx-6.5,ly+6);g.lineTo(lx+6.5,ly+6);g.moveTo(lx-6.8,ly+12);g.lineTo(lx+6.8,ly+12);g.stroke();
+  g.restore();
+}
 function _ledgeDecor(l){
   const g=gx,t=performance.now()/1000,x=l.x,y=l.y,w=l.w,h=l.h,R=i=>_ledgeRand(l,i);
   const st=_ledgeStyle(l),se=_season();
+  _ledgeLantern(l);
   g.save();
   g.lineCap='round';
   if(st==='stone'){
@@ -6887,7 +6919,7 @@ function spawnP(x,y,c,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random
 // Damage numbers stay, but at most three at once, fanned out sideways.
 const _FLOAT_RANK={'PHASE II':6,'SAVED':6,'⚡ FINISHER!':5,'PUNISH!':4,'KI PARRY':4,'PARRY!':3,'Side Cut!':2,'BLOCKED':2,'KI NOT READY':2};
 function _floatRank(t){return _FLOAT_RANK[t]||(/COIN$/.test(t)?1:2);}
-const _BL={pl:'150,185,255,.55',en:'255,90,70,.30',boss:'255,60,50,.42'},_blC={};
+const _BL={pl:'150,185,255,.55',en:'255,90,70,.30',boss:'255,60,50,.42',lamp:'255,170,80,.55',fog:'200,210,235,.10'},_blC={};
 function _backlight(x,y,r,k){
   let c=_blC[k];
   if(!c){
@@ -6897,6 +6929,58 @@ function _backlight(x,y,r,k){
     t.fillStyle=g;t.fillRect(0,0,128,128);_blC[k]=c;
   }
   gx.drawImage(c,x-r,y-r*1.15,r*2,r*2.3);
+}
+// ── LIGHT & ATMOSPHERE ──
+// Embers: hot metal flecks thrown off when blades meet (a parry or a shield
+// block). Unlike the round particles they fall, bounce once off the floor and
+// glow, so a clash reads as steel on steel instead of a puff.
+let _embers=[];
+function _clashSparks(x,y,dir,n){
+  for(let i=0;i<(n||10);i++){
+    const a=(dir>0?0:Math.PI)+(Math.random()-.5)*2.2-.5*Math.sign(Math.random()-.3);
+    const v=2.5+Math.random()*4.5;
+    _embers.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2.2,life:34+Math.random()*26,max:60,b:0});
+  }
+  if(_embers.length>90)_embers.splice(0,_embers.length-90);
+}
+function _updEmbers(){
+  const gy=(ledges.find(l=>l.isGround)||{y:VH}).y;
+  _embers.forEach(e=>{e.x+=e.vx;e.y+=e.vy;e.vy+=.22;e.vx*=.985;e.life--;
+    if(e.y>gy&&e.vy>0&&!e.b){e.y=gy;e.vy*=-.35;e.vx*=.6;e.b=1;}});
+  _embers=_embers.filter(e=>e.life>0);
+}
+function _drawEmbers(){
+  if(!_embers.length)return;
+  gx.save();gx.globalCompositeOperation='lighter';gx.lineCap='round';
+  _embers.forEach(e=>{
+    const k=Math.min(1,e.life/24);
+    gx.globalAlpha=k*.35;_backlight(e.x,e.y,7,'lamp');
+    gx.globalAlpha=k;gx.strokeStyle=e.life>40?'#fff7d6':'#ffb347';gx.lineWidth=1.6;
+    gx.beginPath();gx.moveTo(e.x,e.y);gx.lineTo(e.x-e.vx*1.4,e.y-e.vy*1.4);gx.stroke();
+  });
+  gx.restore();
+}
+// Drifting fog. Three soft banks at different heights and speeds, painted on
+// the background canvas after the scenery, so it passes between the hills and
+// the fighters and gives the night some depth without covering anyone.
+let _fogC=null;
+function _drawFog(ctx,W,H,haze){
+  if(!_fogC){
+    _fogC=document.createElement('canvas');_fogC.width=256;_fogC.height=64;
+    const t=_fogC.getContext('2d'),g=t.createRadialGradient(128,32,0,128,32,128);
+    g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.5,'rgba(255,255,255,.45)');g.addColorStop(1,'rgba(255,255,255,0)');
+    t.setTransform(1,0,0,.25,0,24);t.fillStyle=g;t.fillRect(0,0,256,256);
+  }
+  const tt=(typeof gt==='number'?gt:performance.now()/16);
+  const banks=[[.50,.020,1.6,.16],[.66,.034,1.9,.20],[.82,.050,2.2,.24]];
+  ctx.save();
+  banks.forEach(([y,sp,wm,al],i)=>{
+    const bw=W*wm,bh=H*.22,off=((tt*sp+i*W*.7)%(W+bw))-bw;
+    ctx.globalAlpha=al;
+    ctx.drawImage(_fogC,off,H*y-bh/2,bw,bh);
+    ctx.drawImage(_fogC,off-(W+bw),H*y-bh/2,bw,bh);
+  });
+  ctx.restore();
 }
 function addFloat(x,y,v,c){
   const text=typeof v==='number'?(v>0?'+'+v:String(v)):v;
@@ -7611,7 +7695,7 @@ function startDailyBoss(){
   _acquireWakeLock();
   _inDailyBossRun=true;
   // Special boss level
-  enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];
+  enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];_embers=[];
   slashes=[];blasts=[];bloodSplats=[];splashes=[];corpses=[];
   combo=0;comboT=0;lvlCoins=0;lvlStartT=gt;P.trail=[];
   P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
