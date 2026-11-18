@@ -3760,6 +3760,21 @@ function _paintedBG(name,W,H){
   bx.fillStyle='rgba(2,3,12,.18)';bx.fillRect(0,0,W,H);
   return true;
 }
+// Painted foreground: one transparent strip of trees, a pagoda, a stone
+// lantern and a fence along the bottom of the screen. Replaces the code-drawn
+// props, which were drawn half transparent and looked ghostly over the
+// painted backdrops. Fully opaque, scaled to the screen width, bottom-aligned.
+const _pfg={img:null,ok:false};
+function _paintedFG(W,H){
+  if(!_pfg.img){_pfg.img=new Image();_pfg.img.onload=()=>{_pfg.ok=true;};_pfg.img.src='bg/foreground.webp';}
+  if(!_pfg.ok)return false;
+  const iw=_pfg.img.naturalWidth,ih=_pfg.img.naturalHeight,sc=Math.max(W/iw,(H*.30)/ih);
+  const dw=iw*sc,dh=ih*sc;
+  gx.save();gx.globalAlpha=1;
+  gx.drawImage(_pfg.img,(W-dw)/2,H-dh,dw,dh);
+  gx.restore();
+  return true;
+}
 function drawBG(){
   const W=VW,H=VH;   // CSS pixels; the DPR scale is in the transform
   bx.clearRect(0,0,W,H);
@@ -3806,7 +3821,8 @@ function drawBG(){
   // A painted backdrop, when one exists for this scene and has loaded,
   // replaces the sky, moon, clouds and every ridge down to the mid hills.
   // Until then (or if it fails) the procedural scene below draws as before.
-  if(!_paintedBG(scene.name,W,H)){
+  const _bgPainted=_paintedBG(scene.name,W,H);
+  if(!_bgPainted){
   // Sky gradient
   const sky=bx.createLinearGradient(0,0,0,H);
   const stops=[0,.15,.35,.55,.75,.88,1];
@@ -3992,7 +4008,9 @@ function drawBG(){
 
   // Back forest
   bx.globalAlpha=.7;
-  PL.treesBack.forEach(t=>drawTree(bx,t.x,H*.8,30*t.scale,65*t.scale,t.type,'#04050f'));
+  // The painted backdrops have their own forests; faint sprite trees on top
+  // of them only looked like ghosts.
+  if(!_bgPainted)PL.treesBack.forEach(t=>drawTree(bx,t.x,H*.8,30*t.scale,65*t.scale,t.type,'#04050f'));
   bx.globalAlpha=1;
 
   // Ground soil
@@ -4093,6 +4111,8 @@ function drawGame(){
   // Scenery band. Fixed world positions scrolled at their own parallax rate,
   // wrapped over twice the screen width so props re-enter instead of running
   // out. Drawn before the front trees so the trees overlap them.
+  if(_paintedFG(W,H)){ /* painted strip replaces the props and front trees */ }
+  else{
   if(_envReady){
     const wrap=(x0,rate)=>{const m=W*2;return ((x0-gt*rate)%m+m)%m-W*.5;};
     drawEnv(gx,'pagoda' ,wrap(W*.62,.06),H*.80,150,.5);
@@ -4103,6 +4123,7 @@ function drawGame(){
     drawEnv(gx,'fence'  ,wrap(W*1.6,.18),H*.91,170,.5);
   }
   PL.treesFront.forEach(t=>drawTree(gx,t.x,H*.93,40*t.scale,80*t.scale,t.type,'rgba(4,0,10,.9)'));
+  }
   gx.globalAlpha=1;
 
   // LEDGES — realistic stone/wood
