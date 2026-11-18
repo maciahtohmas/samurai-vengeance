@@ -3736,6 +3736,30 @@ function updateBoss(e,cfg){
 // ═══════════════════════════════════════════════════════
 // ═══ DRAW BACKGROUND — Maximum Realism ══════════════════
 // ═══════════════════════════════════════════════════════
+// ── PAINTED BACKDROPS ──
+// One hand-painted image per scene, in the comic style, loaded the first time
+// that scene is drawn. Drawn to cover the screen, anchored to the top so the
+// sky and the far ridges always show and any crop comes off the plain dark
+// bottom, where the earth and trees are painted over it anyway.
+const PAINTED_BG={night:'bg/night.webp'};
+const _pbg={};
+function _paintedBG(name,W,H){
+  const src=PAINTED_BG[name];if(!src)return false;
+  let st=_pbg[name];
+  if(!st){
+    st=_pbg[name]={img:new Image(),ok:false};
+    st.img.onload=()=>{st.ok=true;};
+    st.img.onerror=()=>{st.ok=false;st.bad=true;};
+    st.img.src=src;
+  }
+  if(!st.ok)return false;
+  const iw=st.img.naturalWidth,ih=st.img.naturalHeight,sc=Math.max(W/iw,H/ih);
+  const dw=iw*sc,dh=ih*sc;
+  bx.drawImage(st.img,(W-dw)*.6,0,dw,dh);
+  // Knocked back a little so the fighters stay the brightest thing on screen.
+  bx.fillStyle='rgba(2,3,12,.18)';bx.fillRect(0,0,W,H);
+  return true;
+}
 function drawBG(){
   const W=VW,H=VH;   // CSS pixels; the DPR scale is in the transform
   bx.clearRect(0,0,W,H);
@@ -3777,14 +3801,17 @@ function drawBG(){
      ground:'#0c0206',rim:'#9c2c3c',haze:'56,20,30',name:'crimson'},
   ];
   const scene=SCENES[sceneIdx];
+  const mx=W*.72,my=H*.15,mr=70;
 
+  // A painted backdrop, when one exists for this scene and has loaded,
+  // replaces the sky, moon, clouds and every ridge down to the mid hills.
+  // Until then (or if it fails) the procedural scene below draws as before.
+  if(!_paintedBG(scene.name,W,H)){
   // Sky gradient
   const sky=bx.createLinearGradient(0,0,0,H);
   const stops=[0,.15,.35,.55,.75,.88,1];
   scene.sky.forEach((c,i)=>sky.addColorStop(stops[i],c));
   bx.fillStyle=sky;bx.fillRect(0,0,W,H);
-
-  const mx=W*.72,my=H*.15,mr=70;
 
   // Moon-anchored sky wash. Centring this on the moon instead of an
   // arbitrary point makes the whole sky read as lit BY the moon.
@@ -3943,6 +3970,8 @@ function drawBG(){
     for(let i=0;i<=pts;i++){bx.lineTo(h.x+i/pts*h.w,H*.8-h.h*Math.sin(i/pts*Math.PI));}
     bx.lineTo(h.x+h.w,H*.8);bx.closePath();bx.fill();
   });
+
+  }
 
   // Ground fog pooling in front of the hills
   const fog=bx.createLinearGradient(0,H*.7,0,H*.86);
