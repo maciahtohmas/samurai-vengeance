@@ -3765,10 +3765,13 @@ function _paintedBG(name,W,H){
 // props, which were drawn half transparent and looked ghostly over the
 // painted backdrops. Fully opaque, scaled to the screen width, bottom-aligned.
 const _pfg={img:null,ok:false};
-function _paintedFG(W,H){
+function _paintedFGReady(){if(!_pfg.img){_pfg.img=new Image();_pfg.img.onload=()=>{_pfg.ok=true;};_pfg.img.src='bg/foreground.webp';}return _pfg.ok;}
+function _paintedFG(W,H,gy){
   if(!_pfg.img){_pfg.img=new Image();_pfg.img.onload=()=>{_pfg.ok=true;};_pfg.img.src='bg/foreground.webp';}
   if(!_pfg.ok)return false;
-  const iw=_pfg.img.naturalWidth,ih=_pfg.img.naturalHeight,sc=Math.max(W/iw,(H*.30)/ih);
+  // Tall enough to fill the space between the walking line and the bottom
+  // edge, so there is no empty dark band under the floor.
+  const iw=_pfg.img.naturalWidth,ih=_pfg.img.naturalHeight,sc=Math.max(W/iw,(gy!=null?(H-gy)*.95:H*.30)/ih);
   const dw=iw*sc,dh=ih*sc;
   gx.save();gx.globalAlpha=1;
   gx.drawImage(_pfg.img,(W-dw)/2,H-dh,dw,dh);
@@ -4111,7 +4114,7 @@ function drawGame(){
   // Scenery band. Fixed world positions scrolled at their own parallax rate,
   // wrapped over twice the screen width so props re-enter instead of running
   // out. Drawn before the front trees so the trees overlap them.
-  if(_paintedFG(W,H)){ /* painted strip replaces the props and front trees */ }
+  if(_paintedFGReady()){ /* the painted strip is drawn with the ground, below */ }
   else{
   if(_envReady){
     const wrap=(x0,rate)=>{const m=W*2;return ((x0-gt*rate)%m+m)%m-W*.5;};
@@ -4129,10 +4132,18 @@ function drawGame(){
   // LEDGES — realistic stone/wood
   ledges.forEach(l=>{
     if(l.isGround){
-      // Ground plane with subtle texture
-      const gg=gx.createLinearGradient(l.x,l.y,l.x,l.y+20);
-      gg.addColorStop(0,'#1a0420');gg.addColorStop(1,'#060010');
-      gx.fillStyle=gg;gx.fillRect(l.x,l.y,l.w,20);
+      // Ground. It used to be a flat 20px purple strip with the backdrop
+      // showing through underneath, so the floor read as a bar floating
+      // between the painting and the foreground. Now it is dark earth from
+      // the walking line to the bottom of the screen, with a thin moonlit
+      // edge, and the painted foreground strip sits on top of it.
+      const gg=gx.createLinearGradient(0,l.y,0,VH);
+      gg.addColorStop(0,'rgba(10,11,20,.30)');gg.addColorStop(.18,'rgba(8,9,16,.82)');gg.addColorStop(.5,'rgba(5,5,10,.96)');gg.addColorStop(1,'#020205');
+      gx.fillStyle=gg;gx.fillRect(l.x,l.y,l.w,Math.max(20,VH-l.y+2));
+      const ge=gx.createLinearGradient(0,0,VW,0);
+      ge.addColorStop(0,'rgba(150,170,215,.10)');ge.addColorStop(.6,'rgba(190,205,240,.32)');ge.addColorStop(1,'rgba(150,170,215,.12)');
+      gx.fillStyle=ge;gx.fillRect(0,l.y,VW,1.5);
+      _paintedFG(VW,VH,l.y);
       return;
     }
     // Painted stone when the scenery atlas is present, keeping the wet moonlit
