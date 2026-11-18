@@ -270,6 +270,28 @@ canvas{
 .bi-stage{font-family:'Noto Serif JP',serif;font-size:clamp(9px,1.8vw,12px);color:rgba(255,255,255,.35);letter-spacing:.5em;margin-bottom:18px;text-transform:uppercase;}
 .bi-name{font-family:'Cinzel Decorative',serif;font-size:clamp(22px,7vw,52px);color:#ef4444;filter:drop-shadow(0 0 25px rgba(239,68,68,.6));margin-bottom:6px;text-align:center;}
 .bi-sub{font-size:clamp(9px,2vw,12px);color:rgba(255,255,255,.4);letter-spacing:.3em;margin-bottom:28px;}
+.bi-story{font-family:Georgia,'Noto Serif JP',serif;font-style:italic;font-size:clamp(13px,2.6vw,17px);line-height:1.45;color:rgba(255,236,200,.85);max-width:min(440px,86vw);text-align:center;margin:-14px auto 24px;}
+/* Story beats: one comic panel and a line or two, shown after key stages. */
+#storyP{z-index:85}
+#storyP .ov-bg{background:rgba(2,2,8,.94)}
+.st-card{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:clamp(10px,2.4vh,18px);width:min(92vw,820px);padding:12px 16px;box-sizing:border-box;pointer-events:auto}
+.st-card img{display:block;max-height:46vh;max-width:100%;border:1px solid rgba(220,180,80,.35);box-shadow:0 10px 40px rgba(0,0,0,.6);border-radius:2px;object-fit:contain}
+.st-txt{display:flex;flex-direction:column;align-items:center;text-align:center;gap:clamp(8px,1.8vh,14px);max-width:440px}
+.st-kick{font-family:'Cinzel',serif;font-size:clamp(8px,1.6vw,11px);letter-spacing:.42em;color:rgba(220,180,80,.75);text-transform:uppercase}
+.st-line{font-family:Georgia,'Noto Serif JP',serif;font-size:clamp(16px,3.4vw,21px);line-height:1.45;color:#f4ead8;margin:0}
+.st-line+.st-line{margin-top:-2px}
+@media (orientation:landscape) and (max-height:560px){
+  .st-card{flex-direction:row;gap:22px;justify-content:center}
+  .st-card img{max-height:78vh;max-width:42vw}
+  .st-txt{align-items:flex-start;text-align:left}
+}
+#scrollList{display:flex;flex-direction:column;gap:10px;max-height:62vh;overflow-y:auto;padding-right:4px}
+.sc-row{display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:3px;padding:8px;cursor:pointer;text-align:left}
+.sc-row img{width:54px;height:72px;object-fit:cover;flex:none;border-radius:2px}
+.sc-row .sc-t{font-size:12px;color:rgba(255,255,255,.75);line-height:1.35}
+.sc-row .sc-k{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.25em;color:rgba(220,180,80,.7);margin-bottom:3px;text-transform:uppercase}
+.sc-row.locked{cursor:default;opacity:.45}
+.sc-row.locked .sc-lock{width:54px;height:72px;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.4);border-radius:2px;font-size:20px}
 .bi-hp{width:min(280px,75vw);height:5px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin:0 auto 24px;}
 @keyframes biFill{from{width:0}to{width:100%}}
 .bi-hp-fill{height:100%;background:linear-gradient(90deg,#7f0000,#ef4444);border-radius:2px;animation:biFill 1.4s ease-out forwards;}
@@ -716,6 +738,7 @@ canvas{
         <button class="mbtn" onclick="openDaily()"><span class="mi">⚡</span>Daily</button>
         <button class="mbtn" onclick="openProfile()"><span class="mi">👤</span>Profile</button>
         <button class="mbtn" onclick="openAchievements()"><span class="mi">🏆</span>Achievements</button>
+        <button class="mbtn" onclick="openScroll()"><span class="mi">📜</span>Story</button>
         <button class="mbtn" id="comicsBtn" onclick="openComics()"><span class="mi">📖</span>Comics</button>
         <button class="mbtn mbtn-later" onclick="openP('seasonP')"><span class="mi">⚡</span>Season Pass</button>
         <button class="mbtn" id="dailyBossBtn" onclick="startDailyBoss()" style="display:none;pointer-events:auto;"><span class="mi">☠</span>Daily Boss</button>
@@ -1203,6 +1226,27 @@ canvas{
 </div>
 
 <!-- ══ CHAPTER SELECT ══ -->
+<div class="ov" id="storyP">
+  <div class="ov-bg"></div>
+  <div class="st-card">
+    <img id="stImg" alt="">
+    <div class="st-txt">
+      <div class="st-kick" id="stKick">The Indigo Ronin</div>
+      <div id="stLines"></div>
+      <button class="rbtn pri" onclick="storyClose()" style="width:190px">Continue</button>
+    </div>
+  </div>
+</div>
+<div class="ov" id="scrollP">
+  <div class="ov-bg"></div>
+  <div class="panel" style="max-width:440px;pointer-events:auto;">
+    <button class="pclose" onclick="closeP('scrollP')" style="pointer-events:auto;">&times;</button>
+    <h2>&#128220; Story Scroll</h2>
+    <p id="scrollSub" style="font-size:12px;color:rgba(255,255,255,.5);text-align:center;margin:-8px 0 14px;"></p>
+    <div id="scrollList"></div>
+    <p id="scrollComics" style="font-size:12px;text-align:center;margin:14px 0 0;"><a href="/comics" target="_blank" rel="noopener" onclick="try{_count('story',{k:'comics'});_ctFlush();}catch(e){}" style="color:#e8b84a">Read the full comics</a></p>
+  </div>
+</div>
 <div class="ov" id="chapterP">
   <div class="ov-bg"></div>
   <div class="panel" style="max-width:400px;pointer-events:auto;">
@@ -1465,6 +1509,7 @@ canvas{
     <div class="bi-stage">Stage <span id="biStg">10</span> — Boss Encounter</div>
     <div class="bi-name" id="biName">IRON ONI</div>
     <div class="bi-sub" id="biSub">Guardian of the First Gate</div>
+    <div class="bi-story" id="biStory" style="display:none"></div>
     <div class="bi-hp"><div class="bi-hp-fill"></div></div>
     <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
       <button class="rbtn pri" onclick="dismissBoss()" style="width:190px">Begin Battle</button>
@@ -2807,6 +2852,7 @@ function modDmg(v){return levelMod==='glass'?v*2:v;}
 
 // ═══════════════════════════════════════════════════════
 function initLevel(){
+  try{_storyPreload(lvl);_storyBossLine(lvl);}catch(e){}
   _inDailyBossRun=false;_lastRunDaily=false;
   // Only nextLevel() used to hide the boss bar, so jumping from a boss stage to
   // another stage by stage select or the menu left a dead boss's bar on screen.
@@ -3508,6 +3554,7 @@ function update(){
     document.getElementById('lcTitle').textContent=lvl%10===0?'BOSS VANQUISHED':'ENEMIES VANQUISHED';
     document.getElementById('lcStats').textContent=`Stage ${lvl} · ${lvlCoins} Coins · Best Combo ×${maxCombo}`;
     document.getElementById('lcScreen').classList.add('active');_bfOnStageClear();sfx.lvl();
+    try{_storyMaybe(lvl);}catch(e){}
   }
   // Nobody dies while the tutorial is still teaching them. A first-time
   // player on Warrior did every step, move to dash, and still lost stage 1:
@@ -8553,6 +8600,88 @@ function _loadChamps(){
 }
 // The Indigo Ronin comics live on their own pages. Opened in a new tab so the
 // game keeps its place. Hidden in portal builds, which only ship the game.
+// ═══ STORY ═══
+// The comics tell Aizumi's story; the game never did. A new player could
+// climb twenty stages without learning who they were or why they were
+// fighting. Story beats are a reward for playing, shown AFTER a stage is
+// cleared, never in front of the first fight: half of new visitors already
+// leave at the splash, and a wall of text there would cost more of them.
+// Each beat is one comic panel and a line or two, shown once. Everything seen
+// (or passed by a returning player) is collected in the Story Scroll.
+const STORY=[
+  {at:1, img:'comic-art/indigo-ronin-1/01.jpg',k:'Kuroyama',
+   lines:['Kuroyama kept a thousand lanterns lit through every winter.','On the last night, they were still burning.']},
+  {at:2, img:'comic-art/indigo-ronin-1/04.jpg',k:'The third hour',
+   lines:['The doors came apart at the third hour. Snow came in first.','Aizumi killed four of them. There were more coming up the stair.']},
+  {at:3, img:'comic-art/indigo-ronin-1/06.jpg',k:'Lord Sakae',
+   lines:['He was late by the length of a corridor.','His lord was never given the chance to stand.']},
+  {at:5, img:'comic-art/indigo-ronin-1/08.jpg',k:'The Iron Oni',
+   lines:['The man who broke the gate was called Tetsuzan, the Iron Oni.','He had done this eleven times before.']},
+  {at:7, img:'comic-art/indigo-ronin-1/10.jpg',k:'The snow',
+   lines:['Tetsuzan left him alive in the snow. Not worth the swing.','By morning Aizumi understood that was a mistake. Not his.']},
+  {at:9, img:'comic-art/indigo-ronin-1/12.jpg',k:'The first gate',
+   lines:['It took until the end of winter to find the Iron Oni\'s gate.','Tetsuzan was waiting.']},
+  {at:10,img:'comic-art/indigo-ronin-2/04.jpg',k:'The swing',
+   lines:['"Who sent you up the mountain?"','The Oni told him. Then Aizumi did what Tetsuzan had not done for him, and took the swing.']},
+  {at:11,img:'comic-art/indigo-ronin-2/05.jpg',k:'The road down',
+   lines:['He left the club where it fell.','He kept the name.']},
+  {at:13,img:'comic-art/indigo-ronin-2/06.jpg',k:'The Blood Fields',
+   lines:['The farmers below the Crimson Keep called their land the Blood Fields.','It was not the sunset.']},
+  {at:15,img:'comic-art/indigo-ronin-2/09.jpg',k:'The first arrow',
+   lines:['The first arrow was meant for an old woman.','Aizumi was standing in the way of it, and then of the rest.']},
+  {at:17,img:'comic-art/indigo-ronin-2/11.jpg',k:'The east gate',
+   lines:['"You will want the east gate," she said.','"It is where they leave the ones who tried."']},
+  {at:19,img:'comic-art/indigo-ronin-2/12.jpg',k:'The road ahead',
+   lines:['Someone was standing in the road ahead, dressed the way Aizumi had dressed for nineteen years.','He had not thought there was anyone else left to wear it.']},
+  {at:20,img:null,k:'To be continued',
+   lines:['The Indigo Ronin returns in Issue Three: The Twin.','Keep climbing.']},
+];
+const BOSS_STORY={
+  10:'Tetsuzan. He burned Kuroyama and left you in the snow. He did not think you were worth the swing.',
+  20:'He wears the indigo of a house that no longer exists. So do you.'
+};
+const _STORY_KEY='sv5_story';
+function _storySeen(){try{return JSON.parse(localStorage.getItem(_STORY_KEY)||'[]');}catch(e){return [];}}
+function _storyMark(at){try{const s=_storySeen();if(!s.includes(at)){s.push(at);localStorage.setItem(_STORY_KEY,JSON.stringify(s));}}catch(e){}}
+function _storyUnlocked(b){return _storySeen().includes(b.at)||(highestLvl||1)>b.at;}
+function _storyPreload(l){
+  const b=STORY.find(x=>x.at===l);
+  if(b&&b.img&&!_storySeen().includes(l)){const im=new Image();im.src=b.img;}
+}
+function _storyBossLine(l){
+  const el=document.getElementById('biStory');if(!el)return;
+  const t=BOSS_STORY[l];el.textContent=t||'';el.style.display=t?'':'none';
+}
+function _storyFill(b){
+  const im=document.getElementById('stImg');
+  if(b.img){im.src=b.img;im.alt=b.lines.join(' ');im.style.display='';}else{im.removeAttribute('src');im.style.display='none';}
+  document.getElementById('stKick').textContent=b.k;
+  document.getElementById('stLines').innerHTML=b.lines.map(t=>'<p class="st-line">'+_esc(t)+'</p>').join('');
+}
+function _storyMaybe(l){
+  if(typeof _inDailyBossRun!=='undefined'&&_inDailyBossRun)return false;
+  const b=STORY.find(x=>x.at===l);
+  if(!b||_storySeen().includes(l))return false;
+  _storyMark(l);
+  _storyFill(b);
+  openP('storyP');
+  _count('story',{k:'b'+l});
+  return true;
+}
+function storyClose(){closeP('storyP');}
+function openScroll(){
+  const list=document.getElementById('scrollList');
+  const open=STORY.filter(_storyUnlocked).length;
+  document.getElementById('scrollSub').textContent=open+' of '+STORY.length+' unlocked. Clear stages to unlock the rest.';
+  list.innerHTML=STORY.map((b,i)=>_storyUnlocked(b)
+    ?'<div class="sc-row" data-i="'+i+'">'+(b.img?'<img src="'+b.img+'" alt="" loading="lazy">':'<div class="sc-lock">&#9998;</div>')+'<div><div class="sc-k">'+_esc(b.k)+'</div><div class="sc-t">'+_esc(b.lines[0])+'</div></div></div>'
+    :'<div class="sc-row locked"><div class="sc-lock">&#128274;</div><div><div class="sc-k">Stage '+b.at+'</div><div class="sc-t">Clear stage '+b.at+' to unlock.</div></div></div>').join('');
+  list.querySelectorAll('.sc-row[data-i]').forEach(r=>r.onclick=()=>{_storyFill(STORY[+r.dataset.i]);closeP('scrollP');openP('storyP');});
+  const cm=document.getElementById('scrollComics');
+  if(cm)cm.style.display=(typeof CRAZYGAMES_BUILD!=='undefined'&&CRAZYGAMES_BUILD)?'none':'';
+  openP('scrollP');
+  _count('story',{k:'scroll'});
+}
 function openComics(){
   try{_count('comic',{k:'menu'});_ctFlush();}catch(e){}
   window.open('/comics','_blank','noopener');

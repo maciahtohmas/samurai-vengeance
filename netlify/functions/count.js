@@ -94,6 +94,7 @@ const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
 const GIFTS = new Set(['claim']);
 const A2HS = new Set(['shown', 'ios', 'accepted', 'dismissed', 'later', 'installed']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
+const STORYK = new Set(['b1','b2','b3','b5','b7','b9','b10','b11','b13','b15','b17','b19','b20','scroll','comics']);
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
 const LEAVES = new Set(['s3', 's10', 's30', 'long']);
@@ -148,6 +149,10 @@ function fieldFor(body) {
   if (e === 'comic') {
     const k = String(body.k || '');
     return COMICS.has(k) ? 'comic_' + k : null;
+  }
+  if (e === 'story') {
+    const k = String(body.k || '');
+    return STORYK.has(k) ? 'story_' + k : null;
   }
   if (e === 'leave') {
     const k = String(body.k || '');
@@ -364,6 +369,14 @@ function renderReport(days, trendDays, extraTop) {
         <tr><th>Issue 1: opened / finished</th><td class="n">${comicN[1]} / ${comicN[2]}</td></tr>
         <tr><th>Issue 2: opened / finished</th><td class="n">${comicN[3]} / ${comicN[4]}</td></tr>
       </tbody></table>` : '';
+    const stAt = [1,2,3,5,7,9,10,11,13,15,17,19,20];
+    const stN = stAt.map(a => g('story_b' + a));
+    const storyBlock = (stN.some(Boolean) || g('story_scroll')) ? `<h3>Story</h3>
+      <table class="walls"><tbody>
+        ${stAt.map((a, i) => stN[i] ? `<tr><th>Saw the story after stage ${a}</th><td class="n">${stN[i]}</td></tr>` : '').join('')}
+        <tr><th>Opened the Story Scroll / went on to the comics</th><td class="n">${g('story_scroll')} / ${g('story_comics')}</td></tr>
+      </tbody></table>
+      <p class="note">Each player sees each beat once, so the drop between rows shows how far people climb.</p>` : '';
     const LEAVE_LABEL = { s3: 'Under 3 seconds', s10: '3 to 10 seconds', s30: '10 to 30 seconds', long: 'Over 30 seconds' };
     const leaves = Object.keys(LEAVE_LABEL).map(k => ({ k, n: g('leave_' + k) })).filter(x => x.n);
     const leaveBlock = leaves.length ? `<h3>Left on the splash, after</h3>
@@ -393,6 +406,7 @@ function renderReport(days, trendDays, extraTop) {
       ${enterBlock}
       ${leaveBlock}
       ${comicBlock}
+      ${storyBlock}
       ${assistBlock}
       ${backBlock}
       ${tutBlock}
