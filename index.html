@@ -165,8 +165,8 @@ canvas{
 .coin-hud{font-size:clamp(10px,2.2vw,13px);color:#fbbf24;margin-top:5px;}
 
 /* ── COMBO ── */
-#combo{position:absolute;top:50%;left:50%;transform:translate(-50%,-65%);text-align:center;pointer-events:none;transition:opacity .4s;}
-.combo-x{font-family:'Cinzel Decorative',serif;font-size:clamp(36px,10vw,72px);line-height:1;background:linear-gradient(180deg,#fff8e0,#fbbf24,#d97706);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 20px rgba(251,191,36,.8));}
+#combo{position:absolute;top:clamp(54px,14vh,96px);right:clamp(14px,4vw,40px);left:auto;transform:none;text-align:right;pointer-events:none;transition:opacity .4s;}
+.combo-x{font-family:'Cinzel Decorative',serif;font-size:clamp(28px,6vw,48px);line-height:1;background:linear-gradient(180deg,#fff8e0,#fbbf24,#d97706);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 20px rgba(251,191,36,.8));}
 .combo-label{font-size:clamp(7px,1.8vw,10px);letter-spacing:.6em;color:rgba(251,191,36,.6);text-transform:uppercase;margin-top:2px;}
 
 /* ── PAUSE BTN ── */
@@ -4234,6 +4234,14 @@ function drawGame(){
     s.life--;
   });
 
+  // BACKLIGHT. On a phone the fighters were small grey shapes on a dark
+  // night and disappeared into it. A soft halo behind each one separates the
+  // figure from the scenery: cool moonlight behind the player, a dim ember
+  // behind enemies, a stronger one behind a boss. One cached sprite per
+  // colour, so this is a handful of drawImage calls a frame.
+  if(P.hp>0||_deathAt)_backlight(P.x+P.w/2,P.y+P.h*.45,58,'pl');
+  enemies.forEach(e=>{if(e.hp>0)_backlight(e.x+e.w/2,e.y+e.h*.45,e.isBoss?96:46,e.isBoss?'boss':'en');});
+
   // PLAYER
   drawPlayer();
 
@@ -6872,7 +6880,40 @@ function saveData(){
 function loadData(){try{const d=JSON.parse(localStorage.getItem('sv5'))||JSON.parse(localStorage.getItem('sv4'));if(d){highestLvl=d.highestLvl||1;styleKey=d.styleKey||'blue';isPrem=d.isPrem||false;coins=d.coins||0;hpLvl=d.hpLvl||1;dmgLvl=d.dmgLvl||1;sprLvl=d.sprLvl||1;dshLvl=d.dshLvl||1;pryLvl=d.pryLvl||1;if(d.diff&&DIFF[d.diff])diff=d.diff;}}catch(e){}}
 
 function spawnP(x,y,c,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*13,vy:(Math.random()-.5)*13,life:38+Math.random()*14,color:c,size:Math.random()*5+1});}
-function addFloat(x,y,v,c){floats.push({x,y,text:typeof v==='number'?(v>0?'+'+v:String(v)):v,color:c,life:55,maxLife:55,size:typeof v==='string'?11:17});}
+// One word callout at a time. In a fast combo FINISHER, PUNISH, PARRY, Side
+// Cut and the coin multiplier all fired within a few frames and stacked into
+// an unreadable pile on top of the fight. Now a new callout replaces the old
+// one unless the old one outranks it and has not had time to be read yet.
+// Damage numbers stay, but at most three at once, fanned out sideways.
+const _FLOAT_RANK={'PHASE II':6,'SAVED':6,'⚡ FINISHER!':5,'PUNISH!':4,'KI PARRY':4,'PARRY!':3,'Side Cut!':2,'BLOCKED':2,'KI NOT READY':2};
+function _floatRank(t){return _FLOAT_RANK[t]||(/COIN$/.test(t)?1:2);}
+const _BL={pl:'150,185,255,.55',en:'255,90,70,.30',boss:'255,60,50,.42'},_blC={};
+function _backlight(x,y,r,k){
+  let c=_blC[k];
+  if(!c){
+    c=document.createElement('canvas');c.width=c.height=128;
+    const t=c.getContext('2d'),g=t.createRadialGradient(64,64,0,64,64,64),[R,G,B,A]=_BL[k].split(',');
+    g.addColorStop(0,`rgba(${R},${G},${B},${A})`);g.addColorStop(.45,`rgba(${R},${G},${B},${A*.45})`);g.addColorStop(1,`rgba(${R},${G},${B},0)`);
+    t.fillStyle=g;t.fillRect(0,0,128,128);_blC[k]=c;
+  }
+  gx.drawImage(c,x-r,y-r*1.15,r*2,r*2.3);
+}
+function addFloat(x,y,v,c){
+  const text=typeof v==='number'?(v>0?'+'+v:String(v)):v;
+  const word=typeof v==='string'&&!/^[-+]?\d+$/.test(v);
+  if(word){
+    const r=_floatRank(text);
+    const cur=floats.find(f=>f.word);
+    if(cur&&cur.rank>r&&cur.maxLife-cur.life<22)return;
+    floats=floats.filter(f=>!f.word);
+    floats.push({x,y:y-8,text,color:c,life:62,maxLife:62,size:r>=4?17:14,word:true,rank:r});
+    return;
+  }
+  const nums=floats.filter(f=>!f.word);
+  if(nums.length>=3)floats.splice(floats.indexOf(nums[0]),1);
+  const off=(nums.length%3-1)*14;
+  floats.push({x:x+off,y,text,color:c,life:55,maxLife:55,size:15});
+}
 function shake(i){if(CFG.shake)shk=i;}
 function ri(a,b){return!(b.x>a.x+a.w||b.x+b.w<a.x||b.y>a.y+a.h||b.y+b.h<a.y);}
 // Contact damage needs a REAL overlap, not a grazing edge. `ri` returns true
