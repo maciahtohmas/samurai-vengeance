@@ -128,6 +128,18 @@
   force = true
 
 [[redirects]]
+  from = "/ki-guide.html"
+  to = "/ki-guide"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/daily-boss.html"
+  to = "/daily-boss"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/parry-guide.html"
   to = "/parry-guide"
   status = 301

@@ -106,4 +106,16 @@
   <url><loc>https://samuraivengeance.com/comics</loc><lastmod>2026-12-04</lastmod></url>
   <url><loc>https://samuraivengeance.com/indigo-ronin-1</loc><lastmod>2026-12-04</lastmod></url>
   <url><loc>https://samuraivengeance.com/indigo-ronin-2</loc><lastmod>2026-12-04</lastmod></url>
+  <url>
+    <loc>https://samuraivengeance.com/ki-guide</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://samuraivengeance.com/daily-boss</loc>
+    <lastmod>2026-11-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
 </urlset>
