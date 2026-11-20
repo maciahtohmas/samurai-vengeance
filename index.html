@@ -3765,6 +3765,28 @@ function _paintedBG(name,W,H){
 // props, which were drawn half transparent and looked ghostly over the
 // painted backdrops. Fully opaque, scaled to the screen width, bottom-aligned.
 const _pfg={img:null,ok:false};
+// Painted earth: a cross-section strip (worn path, flat stones, moss, petals,
+// roots, fading to near black) repeated across the screen under the walking
+// line. Every other copy is mirrored so the seams always match. The darker
+// lower half sits under the touch controls.
+const _pe={img:null,ok:false},EARTH_TOP=42;
+function _paintedEarth(gy){
+  if(!_pe.img){_pe.img=new Image();_pe.img.onload=()=>{_pe.ok=true;};_pe.img.src='bg/earth.webp';}
+  if(!_pe.ok)return false;
+  const im=_pe.img,iw=im.naturalWidth,ih=im.naturalHeight;
+  const s=Math.max(.3,(VH-gy+6)/(ih-EARTH_TOP)),tw=iw*s,dh=ih*s,dy=Math.round(gy-EARTH_TOP*s);
+  gx.fillStyle='#030307';gx.fillRect(0,gy+4,VW,VH-gy);
+  for(let i=0,x=0;x<VW;i++,x+=tw){
+    const dx=Math.floor(x);
+    if(i%2){gx.save();gx.translate(dx+tw,0);gx.scale(-1,1);gx.drawImage(im,0,dy,tw+1,dh);gx.restore();}
+    else gx.drawImage(im,dx,dy,tw+1,dh);
+  }
+  // Quiet the roots and stones under the touch controls; the path stays bright.
+  const sh=gx.createLinearGradient(0,gy+18,0,VH);
+  sh.addColorStop(0,'rgba(2,2,6,0)');sh.addColorStop(.45,'rgba(2,2,6,.38)');sh.addColorStop(1,'rgba(2,2,6,.6)');
+  gx.fillStyle=sh;gx.fillRect(0,gy+18,VW,VH-gy);
+  return true;
+}
 function _paintedFGReady(){if(!_pfg.img){_pfg.img=new Image();_pfg.img.onload=()=>{_pfg.ok=true;};_pfg.img.src='bg/foreground.webp';}return _pfg.ok;}
 function _paintedFG(W,H,gy){
   if(!_pfg.img){_pfg.img=new Image();_pfg.img.onload=()=>{_pfg.ok=true;};_pfg.img.src='bg/foreground.webp';}
@@ -4137,6 +4159,7 @@ function drawGame(){
       // between the painting and the foreground. Now it is dark earth from
       // the walking line to the bottom of the screen, with a thin moonlit
       // edge, and the painted foreground strip sits on top of it.
+      if(_paintedEarth(l.y)){_paintedFG(VW,VH,l.y);return;}
       const gg=gx.createLinearGradient(0,l.y,0,VH);
       gg.addColorStop(0,'rgba(10,11,20,.30)');gg.addColorStop(.18,'rgba(8,9,16,.82)');gg.addColorStop(.5,'rgba(5,5,10,.96)');gg.addColorStop(1,'#020205');
       gx.fillStyle=gg;gx.fillRect(l.x,l.y,l.w,Math.max(20,VH-l.y+2));
