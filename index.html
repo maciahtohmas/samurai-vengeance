@@ -4156,7 +4156,8 @@ function drawGame(){
     // number and no hit sound. It read as losing health for no reason.
     let painted=false;
     const _lst=_ledgeStyle(l);
-    if(_lst!=='stone'){_drawLedgeBody(l,_lst);painted=true;}
+    if(_paintedLedge(l,_lst)){painted=true;l._pl=true;}
+    else if(_lst!=='stone'){_drawLedgeBody(l,_lst);painted=true;l._pl=false;}
     else if(_envReady&&drawGroundTile(gx,l.x,l.y,l.w,l.h,1)){
       painted=true;
       const tg=gx.createLinearGradient(l.x,l.y,l.x+l.w,l.y);
@@ -4784,6 +4785,36 @@ function _drawLedgeBody(l,st){
   }
   g.restore();
 }
+// ── PAINTED PLATFORMS ──
+// One hand-painted atlas with three pieces: a mossy stone slab, a plank bridge
+// with posts and a rope, and a run of temple roof. Each piece is cut into a
+// left end, a middle that repeats, and a right end, so any ledge length works
+// without stretching the art. `top` is the row of the walkable surface in the
+// source, so the painted surface lines up with the ledge's collision line.
+const P_LEDGE={
+  stone :{y:0,  h:159,w:1464,top:14,s:.20,L:125,R:1345,m0:265,m1:1165},
+  // Planks and beams only. The painted posts and rope read as heavy blocks
+  // on the short ledges the game builds, so the slice starts below them.
+  bridge:{y:227,h:82,w:1472,top:3,s:.42,L:44,R:1430,m0:300,m1:1200},
+  roof  :{y:338,h:174,w:1518,top:20,s:.16,L:200,R:1318,m0:300,m1:1200}
+};
+const _plg={img:null,ok:false};
+function _paintedLedge(l,st){
+  if(!_plg.img){_plg.img=new Image();_plg.img.onload=()=>{_plg.ok=true;};_plg.img.src='bg/platforms.webp';}
+  const d=P_LEDGE[st];if(!_plg.ok||!d)return false;
+  const g=gx,im=_plg.img,s=d.s,dh=d.h*s,dy=Math.round(l.y-d.top*s);
+  let lw=d.L*s,rw=(d.w-d.R)*s;
+  const f=Math.min(1,l.w/(lw+rw));lw*=f;rw*=f;      // very short ledge: squeeze the ends
+  const x0=Math.round(l.x),x1=Math.round(l.x+l.w);
+  g.drawImage(im,0,d.y,d.L,d.h,x0,dy,lw,dh);
+  g.drawImage(im,d.R,d.y,d.w-d.R,d.h,x1-rw,dy,rw,dh);
+  const mx0=x0+lw,mx1=x1-rw,tw=(d.m1-d.m0)*s;
+  for(let tx=mx0;tx<mx1-.5;tx+=tw){
+    const cw=Math.min(tw,mx1-tx),sw=cw/s;
+    g.drawImage(im,d.m0,d.y,sw,d.h,Math.floor(tx),dy,Math.ceil(cw)+1,dh);
+  }
+  return true;
+}
 function _ledgeLantern(l){
   // Roughly two ledges in five carry a paper lantern hung from one end. The
   // flame flickers on its own rhythm, and a warm pool of light spills over
@@ -4816,7 +4847,7 @@ function _ledgeDecor(l){
   _ledgeLantern(l);
   g.save();
   g.lineCap='round';
-  if(st==='stone'){
+  if(st==='stone'&&!l._pl){
     // Carved end blocks frame the slab.
     g.fillStyle='rgba(120,110,140,.22)';g.fillRect(x,y,6,h);g.fillRect(x+w-6,y,6,h);
     g.fillStyle='rgba(0,0,0,.35)';g.fillRect(x+6,y+2,1,h-2);g.fillRect(x+w-7,y+2,1,h-2);
@@ -4865,7 +4896,7 @@ function _ledgeDecor(l){
       g.fillStyle='rgba(249,168,212,.9)';
       for(let k=0;k<3;k++){g.beginPath();g.ellipse(mx+k*3-3,y+.3,1.8,1,R(160+i+k)*3,0,Math.PI*2);g.fill();}
       if(st==='stone'&&R(100+i)<.4){g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx+6,y+1,4,1.8,0,Math.PI,0);g.fill();}
-    } else if(st==='stone'){
+    } else if(st==='stone'&&!l._pl){
       g.fillStyle='rgba(58,92,60,.9)';g.beginPath();g.ellipse(mx,y+1,mw/2,2.2,0,Math.PI,0);g.fill();
       g.fillStyle='rgba(96,140,90,.55)';g.fillRect(mx-mw/2+1,y-1,mw-2,1);
       if(R(100+i)<.5){g.strokeStyle='rgba(90,130,80,.8)';g.lineWidth=1;g.beginPath();
