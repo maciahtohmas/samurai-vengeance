@@ -7930,10 +7930,34 @@ function _refreshPremPanel(){
 window._refreshPremPanel = _refreshPremPanel;
 
 window.openP = function(id){
+  _storeCount(id,'open');
   if (id === 'seasonP') return openSeasonPass();
   if (id === 'premP')   return _refreshPremPanel();
   return window.openP_orig.apply(this, arguments);
 };
+// ── Store funnel ─────────────────────────────────────────────────
+// Three paid offers have been live for weeks with no sales, and nothing said
+// whether anyone even saw them. Each offer now reports: panel opened, buy
+// tapped, buy stopped at the sign-in wall, and paid (on return from Stripe).
+// Opens and taps count once per page load, so a player opening a panel
+// five times is still one person.
+const _STORE_IDS={premP:'prem',seasonP:'season',starterP:'starter'};
+function _storeCount(id,step){
+  const k=_STORE_IDS[id]||id;
+  if(!['prem','season','starter'].includes(k))return;
+  try{
+    if(step==='open'||step==='tap')_countOnce('store_'+k+'_'+step,'store',{k:k+'_'+step});
+    else _count('store',{k:k+'_'+step});
+  }catch(e){}
+}
+[['buyPrem','prem'],['buySeasonPass','season'],['buyStarterPack','starter']].forEach(([fn,k])=>{
+  const f=window[fn];if(typeof f!=='function')return;
+  window[fn]=function(){
+    _storeCount(k,'tap');
+    if(!_user)_storeCount(k,'signin');
+    return f.apply(this,arguments);
+  };
+});
 
 async function buySeasonPass(){
   if(!_user){notif('Sign in first to purchase');return;}
@@ -9568,6 +9592,7 @@ requestAnimationFrame(()=>{
     const success=params.get('payment_success');
     const cancel=params.get('payment_cancel');
     if(success){
+      _storeCount(success==='premium'?'prem':success,'paid');
       history.replaceState({},'',location.pathname);
       // Sign-in restore and the Stripe webhook both take a moment, longer on
       // a slow phone. Check every 2s for up to 30s until the purchase shows up.

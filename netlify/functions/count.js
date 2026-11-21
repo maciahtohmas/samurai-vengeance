@@ -94,6 +94,7 @@ const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
 const GIFTS = new Set(['claim']);
 const A2HS = new Set(['shown', 'ios', 'accepted', 'dismissed', 'later', 'installed']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
+const STOREK = new Set(['prem','season','starter'].flatMap(o => ['open','tap','signin','paid'].map(st => o + '_' + st)));
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
 const LEAVES = new Set(['s3', 's10', 's30', 'long']);
@@ -144,6 +145,10 @@ function fieldFor(body) {
   if (e === 'a2hs') {
     const k = String(body.k || '');
     return A2HS.has(k) ? 'a2hs_' + k : null;
+  }
+  if (e === 'store') {
+    const k = String(body.k || '');
+    return STOREK.has(k) ? 'store_' + k : null;
   }
   if (e === 'comic') {
     const k = String(body.k || '');
@@ -364,6 +369,14 @@ function renderReport(days, trendDays, extraTop) {
         <tr><th>Issue 1: opened / finished</th><td class="n">${comicN[1]} / ${comicN[2]}</td></tr>
         <tr><th>Issue 2: opened / finished</th><td class="n">${comicN[3]} / ${comicN[4]}</td></tr>
       </tbody></table>` : '';
+    const stOffers = [['prem', 'Premium $2.99'], ['season', 'Season Pass $1.99/mo'], ['starter', 'Starter Bundle $0.99']];
+    const stRows = stOffers.map(([o, label]) => ({ label, n: ['open', 'tap', 'signin', 'paid'].map(st => g('store_' + o + '_' + st)) }));
+    const storeBlock = stRows.some(r => r.n.some(Boolean)) ? `<h3>Store</h3>
+      <table class="walls"><tbody>
+        <tr><th>Offer</th><td class="n">Opened / tapped buy / stopped at sign-in / paid</td></tr>
+        ${stRows.map(r => `<tr><th>${esc(r.label)}</th><td class="n">${r.n.join(' / ')}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="note">Opened and tapped count each person once per visit. Paid is counted when a player returns from Stripe checkout.</p>` : '';
     const LEAVE_LABEL = { s3: 'Under 3 seconds', s10: '3 to 10 seconds', s30: '10 to 30 seconds', long: 'Over 30 seconds' };
     const leaves = Object.keys(LEAVE_LABEL).map(k => ({ k, n: g('leave_' + k) })).filter(x => x.n);
     const leaveBlock = leaves.length ? `<h3>Left on the splash, after</h3>
@@ -393,6 +406,7 @@ function renderReport(days, trendDays, extraTop) {
       ${enterBlock}
       ${leaveBlock}
       ${comicBlock}
+      ${storeBlock}
       ${assistBlock}
       ${backBlock}
       ${tutBlock}
