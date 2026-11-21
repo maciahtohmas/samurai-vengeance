@@ -6553,11 +6553,11 @@ function updateHUD(){
   const _sn=_stageName(lvl);
   document.getElementById('lvl').textContent=_sn?lvl+' · '+_sn+'\'s stage':lvl;
   document.getElementById('shopG').textContent=coins;
-  document.getElementById('phHp').textContent=hpLvl*100;document.getElementById('hpLbl').textContent=hpLvl;
-  document.getElementById('phDmg').textContent=dmgLvl*150;document.getElementById('dmgLbl').textContent=dmgLvl;
-  document.getElementById('phSpr').textContent=sprLvl*200;document.getElementById('sprLbl').textContent=sprLvl;
-  document.getElementById('phDsh').textContent=dshLvl*120;document.getElementById('dshLbl').textContent=dshLvl;
-  document.getElementById('phPry').textContent=pryLvl*180;document.getElementById('pryLbl').textContent=pryLvl;
+  // Shop prices come from one place. This used to write its own formula
+  // (Iron Guard 180, Spirit 200...) over the real prices from UPG_COST every
+  // HUD refresh, so the Dojo showed a different price from the one charged.
+  // try: updateHUD can run during start-up before UPG_COST is defined.
+  try{_refreshShopUI();}catch(e){}
   const cd=document.getElementById('combo');
   if(combo>=3){cd.style.opacity='1';document.getElementById('comboX').textContent='×'+combo;}else cd.style.opacity='0';
   const bs=document.getElementById('bSpc');if(bs)bs.style.display=P.focus>=P.maxFocus?'flex':'none';
@@ -7525,12 +7525,17 @@ function _refreshShopUI(){
   const lvls = {hp:hpLvl,dmg:dmgLvl,spr:sprLvl,dsh:dshLvl,pry:pryLvl};
   const lbls = {hp:'hpLbl',dmg:'dmgLbl',spr:'sprLbl',dsh:'dshLbl',pry:'pryLbl'};
   Object.keys(map).forEach(k=>{
-    const btn = document.getElementById(map[k]);
+    // map[k] is the price span INSIDE the buy button, which already shows
+    // the coin icon, so the span gets the number only and the button itself
+    // is what gets disabled at MAX.
+    const span = document.getElementById(map[k]);
     const lbl = document.getElementById(lbls[k]);
     if(lbl) lbl.textContent = lvls[k];
-    if(btn){
-      if(lvls[k]>=UPG_MAX){ btn.textContent='MAX'; btn.disabled=true; btn.style.opacity='.4'; }
-      else { btn.textContent='🪙 '+_upgCost(k); btn.disabled=false; btn.style.opacity='1'; }
+    if(span){
+      const btn = span.closest('button')||span;
+      const max = lvls[k]>=UPG_MAX;
+      span.textContent = max ? 'MAX' : _upgCost(k);
+      btn.disabled = max; btn.style.opacity = max ? '.4' : '1';
     }
   });
   const sg = document.getElementById('shopG');
