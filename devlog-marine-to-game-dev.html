@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>I was a Marine machine gunner. Now I make samurai games.</title>
+<meta name="description" content="Four years as a Marine machine gunner, a lifelong love of tech, and a year of building Samurai Vengeance with AI. Why samurai, how I build it, and the hard parts.">
+<link rel="canonical" href="https://samuraivengeance.com/devlog-marine-to-game-dev">
+<meta property="og:site_name" content="Samurai Vengeance">
+<meta property="og:title" content="I was a Marine machine gunner. Now I make samurai games.">
+<meta property="og:description" content="Four years as a Marine machine gunner, a lifelong love of tech, and a year of building Samurai Vengeance with AI. Why samurai, how I build it, and the hard parts.">
+<meta property="og:type" content="article">
+<meta property="article:published_time" content="2026-12-04">
+<meta property="og:url" content="https://samuraivengeance.com/devlog-marine-to-game-dev">
+<meta property="og:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://samuraivengeance.com/og-image.jpg">
+<meta name="theme-color" content="#0a0008">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script type="application/ld+json">
+{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "I was a Marine machine gunner. Now I make samurai games.", "description": "Four years as a Marine machine gunner, a lifelong love of tech, and a year of building Samurai Vengeance with AI. Why samurai, how I build it, and the hard parts.", "url": "https://samuraivengeance.com/devlog-marine-to-game-dev", "image": "https://samuraivengeance.com/og-image.jpg", "datePublished": "2026-12-04", "author": {"@type": "Person", "name": "Maciah Thomas", "url": "https://samuraivengeance.com/creator"}, "publisher": {"@type": "Organization", "name": "Billfiti Studios"}}
+</script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--gold:#c9952a;--gold-lt:#fbbf24;--ink:#0a0008;--txt:rgba(236,214,168,.82);--dim:rgba(236,214,168,.52)}
+  html{-webkit-text-size-adjust:100%}
+  body{background:var(--ink);color:var(--txt);font-family:Georgia,'Times New Roman',serif;
+       line-height:1.7;font-size:16px;
+       background-image:radial-gradient(ellipse at 50% -10%,rgba(120,20,30,.22),transparent 60%)}
+  .wrap{max-width:720px;margin:0 auto;padding:28px 20px 72px}
+  header{border-bottom:1px solid rgba(201,149,42,.22);padding-bottom:18px;margin-bottom:30px}
+  .brand{font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:var(--gold);
+         text-decoration:none;display:inline-block;margin-bottom:14px}
+  .brand:hover{color:var(--gold-lt)}
+  h1{font-size:clamp(24px,5.6vw,33px);color:#f0d9a0;line-height:1.24;margin-bottom:12px;font-weight:700}
+  .meta{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+  h2{font-size:clamp(18px,4.2vw,21px);color:var(--gold-lt);margin:36px 0 10px;font-weight:700}
+  p{margin-bottom:14px}
+  ul,ol{margin:0 0 16px 22px}
+  li{margin-bottom:7px}
+  a{color:var(--gold-lt)}
+  strong{color:#e8d9b0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em;
+       background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;color:#f0d9a0}
+  pre{background:rgba(255,255,255,.04);border:1px solid rgba(201,149,42,.16);border-radius:4px;
+      padding:14px 16px;margin:4px 0 20px;overflow-x:auto;line-height:1.55}
+  pre code{background:none;padding:0;font-size:13.5px;color:var(--txt)}
+  table{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:15px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.08)}
+  th{color:var(--gold);font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:400}
+  td:first-child{color:#e8d9b0;white-space:nowrap}
+  blockquote{border-left:2px solid rgba(201,149,42,.4);padding-left:16px;margin:0 0 16px;
+             color:var(--dim);font-style:italic}
+  .play{display:inline-block;margin:30px 0 8px;padding:13px 26px;
+        background:linear-gradient(135deg,#7c4a00,#c9952a);color:#150c02;text-decoration:none;
+        border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:13px}
+  footer{margin-top:52px;padding-top:20px;border-top:1px solid rgba(201,149,42,.18);
+         font-size:13px;color:var(--dim)}
+  footer a{margin-right:16px;display:inline-block;margin-bottom:6px}
+</style>
+<!--sitenav-css-->
+<style>
+  .sitenav{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:rgba(10,0,8,.94);
+    border-bottom:1px solid rgba(201,149,42,.25);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+  .sitenav-in{max-width:960px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap}
+  .sitenav-home{font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:#c9952a;text-decoration:none;white-space:nowrap}
+  .sitenav-home:hover{color:#fbbf24}
+  .sitenav-links{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1 1 auto;min-width:0;order:2}
+  .sitenav-links::-webkit-scrollbar{display:none}
+  .sitenav-links a{font-size:14px;color:rgba(236,214,168,.78);text-decoration:none;padding:7px 10px;border-radius:3px;white-space:nowrap}
+  .sitenav-links a:hover{color:#fbbf24;background:rgba(201,149,42,.08)}
+  .sitenav-links a[aria-current="page"]{color:#fbbf24;background:rgba(201,149,42,.14)}
+  .sitenav-play{order:3;margin-left:auto;display:inline-block;padding:9px 18px;background:linear-gradient(135deg,#7c4a00,#c9952a);
+    color:#150c02;text-decoration:none;border-radius:3px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-size:12px;white-space:nowrap}
+  .sitenav-play:hover{filter:brightness(1.12)}
+  .sitenav a:focus-visible{outline:2px solid #fbbf24;outline-offset:2px}
+  @media (max-width:640px){
+    .sitenav-in{padding:8px 16px}
+    .sitenav-play{order:2}
+    .sitenav-links{order:3;flex-basis:100%;margin:0 -6px}
+  }
+</style>
+<!--/sitenav-css-->
+</head>
+<body>
+<!--sitenav-->
+<nav class="sitenav" aria-label="Site"><div class="sitenav-in"><a class="sitenav-home" href="/">&#9876; Samurai Vengeance</a><div class="sitenav-links"><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemies</a><a href="/how-to-play">How to Play</a><a href="/devlog" aria-current="page">Dev Notes</a><a href="/about">About</a></div><a class="sitenav-play" href="/">&#9654; Play</a></div></nav>
+<!--/sitenav-->
+<div class="wrap">
+<header>
+  <a class="brand" href="/devlog">&larr; All dev notes</a>
+  <h1>I was a Marine machine gunner. Now I make samurai games.</h1>
+  <p class="meta">4 December 2026 &middot; Maciah Thomas</p>
+</header>
+
+<p>I spent four years in the Marine Corps as a machine gunner. I loved it. It made me who I am today. The discipline, the people, the way you learn to keep going when you're tired and nobody's coming to help. I still carry all of that.</p>
+<p>When I got out, I had to figure out what came next. I've loved tech my whole life, so I knew it would be something with computers. I wanted to build something that actually did something to the person on the other side, something people would feel. And I wanted a real chance at income that didn't depend on me trading every hour for a paycheck. A game checked every box.</p>
+
+<h2>Why samurai</h2>
+<p>I love martial arts. I've always been drawn to swords and the craft of making them, and <em>The Last Samurai</em> is one of my favorite movies. Samurai Vengeance comes from all of that. The combat is built around timing: you wait for the hit, parry it at the last second, and punish the opening. Mashing buttons gets you killed. Reading your opponent gets you through.</p>
+<p>The game has 1,000 stages, a boss every ten, and it runs free in your browser on a phone or a computer. There's also a comic series that goes with it, <a href="/comics"><em>The Indigo Ronin</em></a>, about a samurai who loses his lord and his home in one night and goes up the mountain after the men who did it.</p>
+
+<h2>How I build it</h2>
+<p>I come up with the ideas and I vibe code with AI. I decide what the game should feel like, what the next boss does, what's broken, what's missing. AI helps me write the code and make the art. Then I play it, find what feels wrong, and we go again.</p>
+<p>Some people don't like that. Get over it. This is the AI revolution, and I'd rather learn how to use the new tools than sit around arguing about them. Every developer before me used whatever tools their time had. These are mine.</p>
+
+<h2>The hard part</h2>
+<p>The hardest part wasn't the code. It was figuring out which AI agents to use and how to get them to build what was in my head. There are a lot of tools out there, and most of them don't do what they promise.</p>
+<p>The other hard part is marketing. I'm an introvert. Getting on camera and talking about myself is not my thing. But a game nobody sees is a game nobody plays, so I'm learning that too, one post at a time.</p>
+
+<h2>The best day</h2>
+<p>The best day so far was simple. It was the day the game went live and anyone in the world could play it from a link.</p>
+
+<h2>What I hope you see</h2>
+<p>Samurai Vengeance is a look inside my imagination. It's the stuff I've loved my whole life, samurai and swords and tech, finally built into something real. A year ago it only existed in my head. Now you can play it.</p>
+<p>If you try it, I want to hear what stage you reached and which boss got you. The <a href="/contact">contact page</a> has every way to reach me, and there's more about me on the <a href="/creator">about the creator</a> page.</p>
+
+<a class="play" href="/">Play Samurai Vengeance</a>
+<footer><a href="/">Play</a><a href="/comics">Comics</a><a href="/devlog">Dev Notes</a><a href="/about">About</a><a href="/how-to-play">How to Play</a><a href="/boss-guide">Boss Guide</a><a href="/enemy-guide">Enemy Guide</a><a href="/beginners-guide">Beginner's Guide</a><a href="/parry-guide">Parry Guide</a><a href="/best-samurai-browser-games">Free Samurai Games</a><a href="/contact">Contact</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><!--bf-follow--><div style="margin-top:12px">Follow Billfiti Studios: <a href="https://www.tiktok.com/@billfiti" rel="me noopener" target="_blank">TikTok</a><a href="https://www.instagram.com/billfiti/" rel="me noopener" target="_blank">Instagram</a></div><!--/bf-follow--><div style="margin-top:14px">&copy; 2026 Billfiti Studios &middot; contact@samuraivengeance.com</div></footer>
+</div>
+</body>
+</html>

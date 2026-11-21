@@ -140,6 +140,12 @@
   force = true
 
 [[redirects]]
+  from = "/devlog-marine-to-game-dev.html"
+  to = "/devlog-marine-to-game-dev"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/parry-guide.html"
   to = "/parry-guide"
   status = 301
