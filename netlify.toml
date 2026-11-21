@@ -146,6 +146,12 @@
   force = true
 
 [[redirects]]
+  from = "/dojo-guide.html"
+  to = "/dojo-guide"
+  status = 301
+  force = true
+
+[[redirects]]
   from = "/parry-guide.html"
   to = "/parry-guide"
   status = 301
