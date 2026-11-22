@@ -94,6 +94,7 @@ const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
 const GIFTS = new Set(['claim']);
 const A2HS = new Set(['shown', 'ios', 'accepted', 'dismissed', 'later', 'installed']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
+const HINTK = new Set(['move','parry','punish','attack','jump'].flatMap(h => ['saw_' + h, 'did_' + h]));
 const STOREK = new Set(['prem','season','starter'].flatMap(o => ['open','tap','signin','paid'].map(st => o + '_' + st)));
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
 // How long someone sat on the splash before leaving without entering.
@@ -145,6 +146,10 @@ function fieldFor(body) {
   if (e === 'a2hs') {
     const k = String(body.k || '');
     return A2HS.has(k) ? 'a2hs_' + k : null;
+  }
+  if (e === 'hint') {
+    const k = String(body.k || '');
+    return HINTK.has(k) ? 'hint_' + k : null;
   }
   if (e === 'store') {
     const k = String(body.k || '');
@@ -369,6 +374,13 @@ function renderReport(days, trendDays, extraTop) {
         <tr><th>Issue 1: opened / finished</th><td class="n">${comicN[1]} / ${comicN[2]}</td></tr>
         <tr><th>Issue 2: opened / finished</th><td class="n">${comicN[3]} / ${comicN[4]}</td></tr>
       </tbody></table>` : '';
+    const hintIds = [['move', 'Move'], ['attack', 'Attack'], ['jump', 'Jump'], ['parry', 'Parry now'], ['punish', 'Swing after a parry']];
+    const hintBlock = hintIds.some(([h]) => g('hint_saw_' + h)) ? `<h3>Hints for new players</h3>
+      <table class="walls"><tbody>
+        <tr><th>Hint</th><td class="n">Saw it / did it</td></tr>
+        ${hintIds.map(([h, label]) => `<tr><th>${esc(label)}</th><td class="n">${g('hint_saw_' + h)} / ${g('hint_did_' + h)}</td></tr>`).join('')}
+      </tbody></table>
+      <p class="note">New players get these instead of the step-by-step tutorial. Each shows once per person when it is needed.</p>` : '';
     const stOffers = [['prem', 'Premium $2.99'], ['season', 'Season Pass $1.99/mo'], ['starter', 'Starter Bundle $0.99']];
     const stRows = stOffers.map(([o, label]) => ({ label, n: ['open', 'tap', 'signin', 'paid'].map(st => g('store_' + o + '_' + st)) }));
     const storeBlock = stRows.some(r => r.n.some(Boolean)) ? `<h3>Store</h3>
@@ -407,6 +419,7 @@ function renderReport(days, trendDays, extraTop) {
       ${leaveBlock}
       ${comicBlock}
       ${storeBlock}
+      ${hintBlock}
       ${assistBlock}
       ${backBlock}
       ${tutBlock}
