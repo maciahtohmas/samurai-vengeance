@@ -4232,6 +4232,7 @@ function drawGame(){
     if(l.spikes>0){
       for(let k=1;k<=l.spikes;k++){
         const sx=spikeAt(l,k);
+        if(_paintedSpike(sx,l.y))continue;
         const spG=gx.createLinearGradient(sx,l.y,sx,l.y-20);
         spG.addColorStop(0,'#4a5568');spG.addColorStop(.6,'#94a3b8');spG.addColorStop(1,'#e2e8f0');
         gx.fillStyle=spG;gx.beginPath();gx.moveTo(sx-9,l.y);gx.lineTo(sx,l.y-20);gx.lineTo(sx+9,l.y);gx.fill();
@@ -4838,6 +4839,20 @@ const P_LEDGE={
   roof  :{y:338,h:174,w:1518,top:20,s:.16,L:200,R:1318,m0:300,m1:1200}
 };
 const _plg={img:null,ok:false};
+// Painted spike: one rusted iron stake in its bracket, cut from a painted
+// row. The danger box is unchanged; the art is a little taller than the old
+// cone so it reads clearly at phone size.
+const _psp={img:null,ok:false};
+function _paintedSpike(sx,y){
+  if(!_psp.img){_psp.img=new Image();_psp.img.onload=()=>{_psp.ok=true;};_psp.img.src='bg/spike.webp';}
+  if(!_psp.ok)return false;
+  // Widened a little: the painted stake is slender, and a hazard has to be
+  // easy to spot on a phone. A faint red pool at the base marks it as danger.
+  const h=38,w=h*_psp.img.naturalWidth/_psp.img.naturalHeight*1.45;
+  gx.save();gx.globalCompositeOperation='lighter';gx.globalAlpha=.55;_backlight(sx,y-10,16,'en');gx.restore();
+  gx.drawImage(_psp.img,Math.round(sx-w/2),Math.round(y-h+3),w,h);
+  return true;
+}
 function _paintedLedge(l,st){
   if(!_plg.img){_plg.img=new Image();_plg.img.onload=()=>{_plg.ok=true;};_plg.img.src='bg/platforms.webp';}
   const d=P_LEDGE[st];if(!_plg.ok||!d)return false;
