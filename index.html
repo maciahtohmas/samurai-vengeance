@@ -4843,6 +4843,22 @@ const _plg={img:null,ok:false};
 // row. The danger box is unchanged; the art is a little taller than the old
 // cone so it reads clearly at phone size.
 const _psp={img:null,ok:false};
+// Painted tengu: two frames of the same crow-demon, wings up and wings down,
+// lined up on the eye so the flap does not jitter. Hovering alternates the
+// two with the old flap rhythm; the dive holds wings-down, tipped forward.
+// Drawn in the enemy's local space (already mirrored by facing).
+const _ptg={img:null,ok:false};
+function _paintedTengu(dv,flap){
+  if(!_ptg.img){_ptg.img=new Image();_ptg.img.onload=()=>{_ptg.ok=true;};_ptg.img.src='bg/tengu.webp';}
+  if(!_ptg.ok)return false;
+  const fw=_ptg.img.naturalWidth/2,fh=_ptg.img.naturalHeight,f=(dv||flap<0)?1:0;
+  const h=74,w=h*fw/fh,ex=6,ey=25;
+  gx.save();
+  if(dv){gx.translate(ex,ey);gx.rotate(.35);gx.translate(-ex,-ey);}
+  gx.drawImage(_ptg.img,f*fw,0,fw,fh,ex-w*(310/380),ey-h*(256/492),w,h);
+  gx.restore();
+  return true;
+}
 function _paintedSpike(sx,y){
   if(!_psp.img){_psp.img=new Image();_psp.img.onload=()=>{_psp.ok=true;};_psp.img.src='bg/spike.webp';}
   if(!_psp.ok)return false;
@@ -6036,6 +6052,7 @@ function drawEnemy(e){
     // silhouette alone tells the player which of the two is happening.
     const dv=e.diving>0?1:0;
     const flap=Math.sin(e.an*(dv?.5:.22));
+    if(_paintedTengu(dv,flap)){ /* painted crow-demon drawn */ } else {
     for(const sgn of [-1,1]){
       gx.save();gx.scale(sgn,1);gx.rotate(dv?-.55:flap*.26-.08);
       const wg=gx.createLinearGradient(6,28,44,44);
@@ -6063,6 +6080,7 @@ function drawEnemy(e){
     gx.beginPath();gx.ellipse(4,25,2,1.5,0,0,Math.PI*2);gx.fill();gx.shadowBlur=0;
     if(dv){gx.strokeStyle='rgba(255,210,120,.3)';gx.lineWidth=2;
       gx.beginPath();gx.moveTo(-2,34);gx.lineTo(-22,20);gx.stroke();}
+    }
 
   } else if(e.type==='grunt'){
     // Worn dark armor
