@@ -270,6 +270,22 @@ canvas{
 .bi-stage{font-family:'Noto Serif JP',serif;font-size:clamp(9px,1.8vw,12px);color:rgba(255,255,255,.35);letter-spacing:.5em;margin-bottom:18px;text-transform:uppercase;}
 .bi-name{font-family:'Cinzel Decorative',serif;font-size:clamp(22px,7vw,52px);color:#ef4444;filter:drop-shadow(0 0 25px rgba(239,68,68,.6));margin-bottom:6px;text-align:center;}
 .bi-sub{font-size:clamp(9px,2vw,12px);color:rgba(255,255,255,.4);letter-spacing:.3em;margin-bottom:28px;}
+/* VS screen: fighting-game style face-off before every boss */
+.vs-row{display:flex;align-items:center;justify-content:center;gap:clamp(10px,3vw,26px);margin:2px 0 14px}
+.vs-card{display:flex;flex-direction:column;align-items:center;gap:6px;animation:vsIn .45s ease-out both}
+.vs-card.r{animation-name:vsInR}
+.vs-card img,.vs-card canvas{width:clamp(84px,17vh,150px);height:clamp(84px,17vh,150px);object-fit:cover;border:2px solid rgba(232,184,74,.75);border-radius:3px;box-shadow:0 6px 24px rgba(0,0,0,.6);background:#0b0608}
+.vs-card.r img,.vs-card.r canvas{border-color:rgba(220,40,40,.85)}
+.vs-card span{font:700 clamp(10px,1.8vw,13px)/1 'Cinzel',serif;letter-spacing:.22em;color:#e8be5c}
+.vs-card.r span{color:#f87171}
+.vs-x{font:900 clamp(26px,6vh,46px)/1 'Cinzel Decorative','Cinzel',serif;color:#fff;text-shadow:0 0 18px rgba(220,40,40,.9),0 2px 0 #000;animation:vsX .5s .25s ease-out both}
+.vs-meta{font-size:clamp(10px,1.7vw,12px);color:rgba(255,236,200,.65);letter-spacing:.06em;margin:-6px 0 14px;text-align:center}
+.vs-meta b{color:#fbbf24}
+@keyframes vsIn{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:none}}
+@keyframes vsInR{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes vsX{from{opacity:0;transform:scale(2.2)}to{opacity:1;transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.vs-card,.vs-x{animation:none}}
+#lcGrade{font:900 clamp(40px,9vh,72px)/1 'Cinzel Decorative','Cinzel',serif;margin:2px 0 8px;display:none;text-shadow:0 0 22px currentColor}
 .bi-hp{width:min(280px,75vw);height:5px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin:0 auto 24px;}
 @keyframes biFill{from{width:0}to{width:100%}}
 .bi-hp-fill{height:100%;background:linear-gradient(90deg,#7f0000,#ef4444);border-radius:2px;animation:biFill 1.4s ease-out forwards;}
@@ -1453,6 +1469,7 @@ canvas{
   <div class="ov-bg"></div>
   <div class="ov-content">
     <div class="rtitle victory" id="lcTitle">Vanquished</div>
+    <div id="lcGrade"></div>
     <div class="rstats" id="lcStats"></div>
     <div class="rbtns">
       <button class="rbtn pri" onclick="nextLevel()">Journey Onward</button>
@@ -1476,8 +1493,14 @@ canvas{
   <div class="ov-bg" style="background:radial-gradient(ellipse at 50% 40%,rgba(120,5,10,.4),rgba(0,0,0,.97))"></div>
   <div class="ov-content">
     <div class="bi-stage">Stage <span id="biStg">10</span> — Boss Encounter</div>
+    <div class="vs-row">
+      <div class="vs-card"><img src="bg/vs-aizumi.webp" alt="Aizumi" width="150" height="150"><span>AIZUMI</span></div>
+      <div class="vs-x">VS</div>
+      <div class="vs-card r"><img id="vsBossImg" alt="" width="150" height="150" style="display:none"><canvas id="vsBossCv" width="300" height="300"></canvas><span id="vsBossNm">BOSS</span></div>
+    </div>
     <div class="bi-name" id="biName">IRON ONI</div>
     <div class="bi-sub" id="biSub">Guardian of the First Gate</div>
+    <div class="vs-meta" id="vsMeta"></div>
     <div class="bi-hp"><div class="bi-hp-fill"></div></div>
     <div style="display:flex;flex-direction:column;gap:10px;align-items:center">
       <button class="rbtn pri" onclick="dismissBoss()" style="width:190px">Begin Battle</button>
@@ -2030,6 +2053,179 @@ function _parryFX(str){
 }
 // Last hit on a boss: freeze, a big gold burst, a deep boom, and the stage
 // complete screen held back long enough to watch the boss go down.
+// ═══ FIGHT FEATURES ═══
+// TODOME (the finishing blow), the VS screen, special moves, the Perfect Parry
+// and boss grades: boss fights that play more like a fighting game.
+let _todome=null,_inkFX=null,_fightDmg=0,_lastTodome=null,_lastTap={d:0,t:0},_lungeAt=0;
+const TD_ICONS={atk:'⚔',parry:'🛡',jump:'▲'};
+const TD_KEYS={atk:'Z',parry:'Q',jump:'↑'};
+const TD_BTN={atk:'bAtk',parry:'bParry',jump:'bJump'};
+function _todomeStart(e){
+  const pool=['atk','parry','jump'],seq=['atk'];
+  while(seq.length<3)seq.push(pool[Math.floor(Math.random()*pool.length)]);
+  _todome={e,seq,idx:0,t:0,limit:60*3,flash:0,bad:0};
+  e._kneel=true;e.hp=Math.max(1,e.hp);
+  projs=[];P.inv=1e9;P.atk=false;P.vx=0;P.face=(e.x+e.w/2)>(P.x+P.w/2)?1:-1;
+  shake(14);try{sfx.special();}catch(err){}
+  try{_count('fight',{k:'todome_start'});}catch(err){}
+}
+function _todomeInput(k){
+  const T=_todome;if(!T||T.t<12)return;          // a beat to read the prompt
+  if(k===T.seq[T.idx]){
+    T.idx++;T.flash=10;try{sfx.parry();}catch(e){}
+    if(navigator.vibrate)try{navigator.vibrate(15);}catch(e){}
+    if(T.idx>=T.seq.length)_todomeEnd(true);
+  } else {T.bad=12;_todomeEnd(false);}
+}
+function _todomeTick(){
+  const T=_todome;if(!T)return;
+  T.t++;if(T.flash>0)T.flash--;
+  if(T.t>T.limit)_todomeEnd(false);
+  // Keep the right on-screen button glowing on touch devices.
+  if(_tutInput==='touch'&&T&&_todome)_tutGlow([TD_BTN[T.seq[T.idx]]]);
+}
+function _todomeEnd(ok){
+  const T=_todome;if(!T)return;
+  const e=T.e;_todome=null;P.inv=60;e._kneel=false;_tutGlow([]);
+  _lastTodome=ok;
+  if(ok){
+    e._todomeDone=true;e.hp=0;
+    const bonus=150;coins+=bonus;lvlCoins+=bonus;
+    addFloat(e.x+e.w/2,e.y-30,'TODOME! +'+bonus,'#fbbf24');
+    _inkFX={t:0,x:e.x+e.w/2,y:e.y+e.h*.45};
+    if(!e._tdCoins)dropCoins(e);
+    enemies=_reap(enemies);updateHUD();
+    try{_count('fight',{k:'todome_ok'});}catch(err){}
+  } else {
+    e._todomeFailed=true;e.hp=Math.max(1,Math.round(e.maxHp*.12));
+    addFloat(e.x+e.w/2,e.y-30,'HE RISES!','#ef4444');
+    P.vx=P.x<e.x?-12:12;P.vy=-6;shake(18);
+    try{_count('fight',{k:'todome_fail'});}catch(err){}
+  }
+}
+// Drawn on the top canvas after everything else.
+function _drawFight(){
+  const g=fx,W=VW,H=VH;
+  if(_todome){
+    const T=_todome,e=T.e,k=Math.min(1,T.t/14);
+    g.save();
+    g.fillStyle=`rgba(0,0,0,${.62*k})`;g.fillRect(0,0,W,H);
+    const rg=g.createRadialGradient(e.x+e.w/2,e.y+e.h/2,10,e.x+e.w/2,e.y+e.h/2,H*.6);
+    rg.addColorStop(0,`rgba(180,20,20,${.35*k})`);rg.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=rg;g.fillRect(0,0,W,H);
+    // Title: とどめ over TODOME!
+    const sc=1+Math.max(0,1-T.t/10)*.8,cy=H*.22;
+    g.translate(W/2,cy);g.scale(sc,sc);g.textAlign='center';g.textBaseline='middle';
+    g.font='700 '+Math.round(H*.05)+'px "Noto Serif JP",serif';g.fillStyle='rgba(255,220,200,.85)';g.fillText('とどめ',0,-H*.075);
+    g.font='900 '+Math.round(H*.12)+'px "Cinzel Decorative","Cinzel",Georgia,serif';
+    g.lineWidth=6;g.strokeStyle='#000';g.strokeText('TODOME!',0,0);
+    g.fillStyle='#ef2b2b';g.shadowColor='#ff3030';g.shadowBlur=24;g.fillText('TODOME!',0,0);g.shadowBlur=0;
+    g.setTransform(DPR*WZ,0,0,DPR*WZ,0,0);
+    // The input sequence
+    const n=T.seq.length,r=Math.min(30,H*.06),gap=r*2.9,x0=W/2-gap*(n-1)/2,y=H*.42;
+    for(let i=0;i<n;i++){
+      const x=x0+i*gap,done=i<T.idx,cur=i===T.idx;
+      g.beginPath();g.arc(x,y,r,0,Math.PI*2);
+      g.fillStyle=done?'rgba(232,184,74,.95)':'rgba(10,8,12,.85)';g.fill();
+      g.lineWidth=cur?4:2;g.strokeStyle=cur?`rgba(255,215,120,${.6+.4*Math.sin(T.t*.35)})`:'rgba(232,184,74,.55)';g.stroke();
+      g.fillStyle=done?'#1a0f02':'#f6e7c3';g.font='700 '+Math.round(r*.95)+'px system-ui,sans-serif';g.fillText(TD_ICONS[T.seq[i]],x,y+1);
+      if(_tutInput!=='touch'){g.font='700 '+Math.round(r*.5)+'px ui-monospace,monospace';g.fillStyle='rgba(255,236,200,.75)';g.fillText(TD_KEYS[T.seq[i]],x,y+r+14);}
+    }
+    // Time bar
+    const bw=gap*(n-1)+r*2,left=1-T.t/T.limit;
+    g.fillStyle='rgba(255,255,255,.12)';g.fillRect(W/2-bw/2,y+r+28,bw,5);
+    g.fillStyle=left>.35?'#fbbf24':'#ef4444';g.fillRect(W/2-bw/2,y+r+28,bw*Math.max(0,left),5);
+    if(T.flash>0){g.fillStyle=`rgba(255,255,255,${T.flash/30})`;g.fillRect(0,0,W,H);}
+    g.restore();
+  }
+  if(_inkFX){
+    const F=_inkFX;F.t++;
+    g.save();
+    // A brush slash grows corner to corner, then the 斬 stamp lands.
+    const p=Math.min(1,F.t/10),fade=F.t>70?Math.max(0,1-(F.t-70)/30):1;
+    g.globalAlpha=fade;
+    const x1=-W*.05,y1=H*.78,x2=W*1.05,y2=H*.18,xm=x1+(x2-x1)*p,ym=y1+(y2-y1)*p;
+    g.lineCap='round';
+    g.strokeStyle='rgba(8,4,6,.92)';g.lineWidth=H*.07;g.beginPath();g.moveTo(x1,y1);g.lineTo(xm,ym);g.stroke();
+    g.strokeStyle='rgba(200,20,20,.85)';g.lineWidth=H*.018;g.beginPath();g.moveTo(x1,y1+H*.02);g.lineTo(xm,ym+H*.02);g.stroke();
+    if(F.t>12){
+      const s=Math.max(1,2.2-(F.t-12)/6);
+      g.translate(W/2,H*.4);g.scale(s,s);g.textAlign='center';g.textBaseline='middle';
+      g.font='900 '+Math.round(H*.2)+'px "Noto Serif JP",serif';
+      g.fillStyle='rgba(200,18,18,.92)';g.shadowColor='rgba(0,0,0,.6)';g.shadowBlur=10;g.fillText('斬',0,0);
+    }
+    g.restore();
+    if(F.t>100)_inkFX=null;
+  }
+}
+// Special moves: returns a move object or null.
+function _dirTap(d){
+  const now=performance.now();
+  if(_lastTap.d===d&&now-_lastTap.t<280){_lungeAt=now;_lastTap={d:0,t:0};return;}
+  _lastTap={d,t:now};
+}
+function _specialMove(){
+  if(P.punishT>0)return null;
+  const down=keys.ArrowDown||keys.KeyS;
+  if(down&&P.gnd){
+    P.vy=P.jp*.9;P.gnd=false;P.jumps=Math.max(0,P.jumps-1);
+    P.comboStep=2;
+    try{_countOnce('rise_'+lvl,'fight',{k:'rise'});}catch(e){}
+    return Object.assign({},COMBO_MOVES[2],{name:'Rising Slash',arcY:-70,arcR:110,dmgMul:1.6,label:'RISING SLASH!',labelColor:'#88ddff'});
+  }
+  if(performance.now()-_lungeAt<450){
+    _lungeAt=0;P.vx=P.face*16;P.inv=Math.max(P.inv,12);
+    P.comboStep=1;
+    try{_countOnce('lunge_'+lvl,'fight',{k:'lunge'});}catch(e){}
+    return Object.assign({},COMBO_MOVES[1],{name:'Lunge',arcX:40,arcR:100,dmgMul:1.6,label:'LUNGE!',labelColor:'#ffcc44'});
+  }
+  return null;
+}
+// VS screen
+function _vsSetup(bi,name){
+  const img=document.getElementById('vsBossImg'),cv=document.getElementById('vsBossCv');
+  document.getElementById('vsBossNm').textContent=String(name||'').toUpperCase();
+  const art={0:'bg/vs-boss1.webp',1:'bg/vs-boss2.webp'}[bi];
+  cv.style.display='none';
+  if(art){img.src=art;img.style.display='';}
+  else{
+    img.style.display='none';
+    const c=cv.getContext('2d');c.clearRect(0,0,300,300);c.fillStyle='#120608';c.fillRect(0,0,300,300);
+    let tries=0;
+    (function paint(){
+      const atl=_bossAtlas[bi]||(tries>=40?_bossAtlas[0]:null);
+      if(atl){
+        const p=BPARTS.head,s=Math.min(240/p[2],240/p[3]);
+        const rg=c.createRadialGradient(150,160,10,150,160,170);rg.addColorStop(0,'rgba(160,20,20,.55)');rg.addColorStop(1,'rgba(0,0,0,0)');
+        c.fillStyle=rg;c.fillRect(0,0,300,300);
+        c.drawImage(atl,p[0],p[1],p[2],p[3],150-p[2]*s/2,160-p[3]*s/2,p[2]*s,p[3]*s);
+        try{img.src=cv.toDataURL('image/png');img.style.display='';}catch(e){}
+      } else {tries++;setTimeout(paint,100);}
+    })();
+  }
+  const g=_gradesGet()[bi];
+  const tips=['Tip: hold ▼ and attack for a Rising Slash.','Tip: double-tap a direction, then attack, to Lunge.','Tip: parry at the very last moment for a Perfect Parry.','Tip: finish him with TODOME at the end of the fight.'];
+  document.getElementById('vsMeta').innerHTML=(g?'Best grade: <b>'+g+'</b> · ':'')+tips[Math.floor(Math.random()*tips.length)];
+}
+// Boss grades
+function _gradesGet(){try{return JSON.parse(localStorage.getItem('sv5_grades')||'{}');}catch(e){return {};}}
+function _bossGrade(){
+  const el=document.getElementById('lcGrade');if(!el)return;
+  if(lvl%10!==0){el.style.display='none';return;}
+  const secs=(gt-lvlStartT)/60,dmg=_fightDmg/Math.max(1,P.maxHp);
+  let gr='C';
+  if(secs<=45&&dmg<=.15&&_lastTodome)gr='S';
+  else if(secs<=75&&dmg<=.4)gr='A';
+  else if(dmg<=.75)gr='B';
+  const bonus={S:200,A:100,B:25,C:0}[gr];
+  if(bonus){coins+=bonus;lvlCoins+=bonus;}
+  el.textContent=gr;el.style.display='block';
+  el.style.color={S:'#fbbf24',A:'#60a5fa',B:'#a3e635',C:'#9ca3af'}[gr];
+  document.getElementById('lcStats').textContent=`Stage ${lvl} · Grade ${gr}${bonus?' +'+bonus:''} · ${lvlCoins} Coins · ${Math.round(secs)}s · Best Combo ×${maxCombo}`;
+  const bi=Math.floor(lvl/10-1)%BOSSES.length,all=_gradesGet(),order='CBAS';
+  if(!all[bi]||order.indexOf(gr)>order.indexOf(all[bi])){all[bi]=gr;try{localStorage.setItem('sv5_grades',JSON.stringify(all));}catch(e){}}
+  saveData();updateHUD();
+  try{_count('fight',{k:'grade_'+gr});}catch(e){}
+}
 function _bossFinisher(e){
   _pStop=Math.max(_pStop,32);shake(26);
   _impactFX(e.x+e.w/2,e.y+e.h*.45,{str:2.2,sparks:12,flash:.55,zoom:.08,zoomMs:520,dur:700});
@@ -2107,6 +2303,7 @@ function _reap(list){
   const alive=[];
   for(const e of list){
     if(e.hp>0){alive.push(e);continue;}
+    if(e.isBoss&&!e._todomeDone&&!e._todomeFailed&&!_todome&&gState==='playing'){e.hp=1;e._tdCoins=true;_todomeStart(e);alive.push(e);continue;}
     if(e.isBoss&&!e._finished){e._finished=true;_bossFinisher(e);}
     if(corpses.length<12){e.dieAt=performance.now();corpses.push(e);}
   }
@@ -2195,6 +2392,8 @@ window.addEventListener('keydown',e=>{
     if(sp&&as&&as.classList.contains('active')&&sp.offsetParent!==null&&t!=='INPUT'&&t!=='TEXTAREA'){e.preventDefault();enterGame('key');return;}
   }
   keys[e.code]=true;
+  if(!e.repeat&&(e.code==='ArrowLeft'||e.code==='KeyA'))_dirTap(-1);
+  if(!e.repeat&&(e.code==='ArrowRight'||e.code==='KeyD'))_dirTap(1);
   if(e.code==='Space'||e.code==='KeyZ')doAtk();
   if(e.code==='ArrowUp'||e.code==='KeyW')doJump();
   // Either Shift. Only the left one was bound, so a right-hand Shift did nothing.
@@ -2265,7 +2464,7 @@ document.addEventListener('visibilitychange',()=>{
   // see it. Pause instead.
   if(gState==='playing'&&!paused&&!_panelPaused.size)doPause();
 });
-bt('bLeft','ArrowLeft',null,0);bt('bRight','ArrowRight',null,0);bt('bDown','ArrowDown',null,0);
+bt('bLeft','ArrowLeft',()=>_dirTap(-1),0);bt('bRight','ArrowRight',()=>_dirTap(1),0);bt('bDown','ArrowDown',null,0);
 bt('bJump','ArrowUp',doJump);bt('bAtk','KeyZ',doAtk);bt('bSpc','KeyX',doSpc);
 bt('bDash','ShiftLeft',doDash,18);bt('bParry','KeyQ',doParry,10);
 
@@ -2420,6 +2619,7 @@ function bottomUIBand(){
 }
 
 function doAtk(){
+  if(_todome){_todomeInput('atk');return;}
   if(gState!=='playing'||tStop>0||paused)return;
   if(P.atk)return; // mid-swing, buffer ignored (prevents spam)
 
@@ -2436,7 +2636,13 @@ function doAtk(){
     P.comboStep=0;
   }
 
-  const move=COMBO_MOVES[P.comboStep];
+  // Special moves, fighting-game style. Hold down (or the down button) and
+  // attack on the ground: Rising Slash, a launching upward cut that reaches
+  // tengu and ledges above. Double-tap a direction, then attack: Lunge, a
+  // dashing thrust that closes distance with a moment of invincibility.
+  let move=COMBO_MOVES[P.comboStep];
+  const _sp=_specialMove();
+  if(_sp)move=_sp;
   P.atk=true;
   P.atkT=move.maxAtk;
   P.maxAtk=move.maxAtk;
@@ -2444,7 +2650,9 @@ function doAtk(){
   P.lastAtkT=gt;
 
   // Show combo step name as float
-  if(P.comboStep>0){
+  if(_sp){
+    addFloat(P.x+P.w/2,P.y-24,_sp.label,_sp.labelColor);
+  } else if(P.comboStep>0){
     const labels=['','Side Cut!','⚡ FINISHER!'];
     addFloat(P.x+P.w/2,P.y-20,labels[P.comboStep],P.comboStep===2?'#88ddff':'#ffaa44');
   }
@@ -2637,14 +2845,23 @@ function checkHit(move){
   // Stats
   if(typeof onKill==='function'&&hit) onKill(false);
 }
-function doJump(){if(gState==='playing'&&P.jumps>0&&tStop<=0&&!paused){P.vy=P.jp;P.gnd=false;P.jumps--;sfx.jump();spawnP(P.x+P.w/2,P.y+P.h,P.jumps===1?'#4a5568':'#e2e8f0',5);}}
-function doDash(){if(gState==='playing'&&P.dashCD<=0&&tStop<=0&&!paused){P.dash=true;P.dashT=8+dshLvl*2;P.dashCD=42;P.inv=P.dashT+6;sfx.dash();shake(4);spawnP(P.x+P.w/2,P.y+P.h/2,'rgba(255,255,255,.6)',7);}}
+function doJump(){if(_todome){_todomeInput('jump');return;}if(gState==='playing'&&P.jumps>0&&tStop<=0&&!paused){P.vy=P.jp;P.gnd=false;P.jumps--;sfx.jump();spawnP(P.x+P.w/2,P.y+P.h,P.jumps===1?'#4a5568':'#e2e8f0',5);}}
+function doDash(){if(_todome)return;if(gState==='playing'&&P.dashCD<=0&&tStop<=0&&!paused){P.dash=true;P.dashT=8+dshLvl*2;P.dashCD=42;P.inv=P.dashT+6;sfx.dash();shake(4);spawnP(P.x+P.w/2,P.y+P.h/2,'rgba(255,255,255,.6)',7);}}
 // ── Parry payoff ──────────────────────────────────────────────────────────
 // PUNISH_FRAMES is deliberately shorter than the combo window so the window
 // reads as a distinct opportunity you can miss, not a free permanent upgrade.
 const PUNISH_FRAMES=50, KI_PARRY_COST=30;
 function grantPunish(x,y){
   P.punishT=PUNISH_FRAMES;
+  // Perfect Parry: pressed in the first 3 frames of the window. A white
+  // flash, a longer punish window, extra combo and a little Ki.
+  if(P.parryT>=(7+pryLvl*3)-3){
+    P.punishT=Math.round(PUNISH_FRAMES*1.5);combo+=3;comboT=180;
+    P.focus=Math.min(P.maxFocus,P.focus+10);
+    addFloat(x,y-44,'PERFECT!','#ffffff');
+    try{_impactFX(x,y,{str:1.3,color:'#ffffff',core:'#ffffff',flash:.45,flashColor:'#ffffff',dur:380});}catch(e){}
+    try{_countOnce('perfect_'+lvl,'fight',{k:'perfect'});}catch(e){}
+  }
   addFloat(x,y-22,'PUNISH!','#ffe066');
   updateHUD();
 }
@@ -2738,6 +2955,7 @@ function _updateParryCue(){
 }
 
 function doParry(){
+  if(_todome){_todomeInput('parry');return;}
   if(gState!=='playing'||tStop>0||paused)return;
   let kiSpent=false;
   if(P.parryCD>0){
@@ -2829,7 +3047,7 @@ function initLevel(){
   try{ const _k=_dcKey(lvl); ST.attemptsByStage[_k]=(ST.attemptsByStage[_k]||0)+1; }catch(e){}
   enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];_embers=[];
   slashes=[];blasts=[];bloodSplats=[];splashes=[];corpses=[];
-  combo=0;comboT=0;maxCombo=Math.max(maxCombo,0);lvlCoins=0;lvlStartT=gt;P.trail=[];P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
+  combo=0;comboT=0;maxCombo=Math.max(maxCombo,0);lvlCoins=0;lvlStartT=gt;_fightDmg=0;_lastTodome=null;_todome=null;P.trail=[];P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
   _prevLvlCoins=0;
   // Clear any in-flight death collapse — a revive or a restart must not
   // drop the player back in mid-fall, face down and fading out.
@@ -2886,6 +3104,7 @@ function initLevel(){
     document.getElementById('biStg').textContent=lvl;
     document.getElementById('biName').textContent=bn[0].toUpperCase();
     document.getElementById('biSub').textContent=bn[1];
+    try{_vsSetup(bi,bn[0]);}catch(e){}
     const bHp=900+lvl*25;
     enemies.push({x:VW/2-50,y:GY-115,w:100,h:110,vx:2+(3*Math.min(Math.pow(Math.max(0,(((lvl-1)/999)-0.85)/0.15),0.5),1)),
       hp:bHp,maxHp:bHp,patMin:80,patMax:VW-180,face:1,
@@ -3356,6 +3575,7 @@ function update(){
   if(_pStop>0){_pStop--;return;}
   if(_hStop>0){_hStop--;return;}
   if(gState!=='playing'||paused)return;
+  if(_todome){_todomeTick();return;}
   if(_devGodMode){P.hp=P.maxHp;P.inv=10;}
   if(_devGodMode){P.hp=P.maxHp;P.inv=Math.max(P.inv,2);} // god mode — keep HP full
 
@@ -3496,7 +3716,7 @@ function update(){
   floats=floats.filter(f=>f.life>0);
 
   // Stats tracking
-  if(P.hp<_hpBefore)onDamageTaken();
+  if(P.hp<_hpBefore){onDamageTaken();_fightDmg+=_hpBefore-P.hp;}
   _tickStats();
   _reachParry();
   _updateParryCue();
@@ -3522,6 +3742,7 @@ function update(){
     try{_returnLine();_a2hsMaybe();}catch(e){}
     document.getElementById('lcTitle').textContent=lvl%10===0?'BOSS VANQUISHED':'ENEMIES VANQUISHED';
     document.getElementById('lcStats').textContent=`Stage ${lvl} · ${lvlCoins} Coins · Best Combo ×${maxCombo}`;
+    try{_bossGrade();}catch(e){}
     document.getElementById('lcScreen').classList.add('active');_bfOnStageClear();sfx.lvl();
   }
   // Nobody dies while the tutorial is still teaching them. A first-time
@@ -3727,6 +3948,7 @@ function _separateEnemies(){
 
 function updateBoss(e,cfg){
   _updateBossBar(e);
+  if(!_todome&&!e._todomeDone&&!e._todomeFailed&&e.hp>0&&e.hp<=e.maxHp*.05){_todomeStart(e);return;}
   // The boss never counted this down, and its contact check never read it, so
   // a parry repeated on every frame the two overlapped (8 in one window: eight
   // PARRY! floats, +38 combo, the boss flipping direction each frame) and the
@@ -6205,6 +6427,7 @@ function drawEnemy(e){
 function drawBoss(e){
   gx.save();gx.translate(e.x+e.w/2,e.y);gx.scale(e.face,1);
   const p2=e.phase===2,bob=Math.sin(e.an*.035)*4;gx.translate(0,bob);
+  if(e._kneel){gx.translate(0,e.h*.16);gx.rotate(.12);}
 
   // ══ BOSS CUTOUT ══ the Iron Oni on its own rig.
   // The attack cycle is read off the SAME shotT the firing logic counts down,
@@ -6567,7 +6790,7 @@ function loop(ts){
   // Draw first, exactly as before — update() used to run after the draw, and
   // preserving that order keeps the first frame and every draw-time
   // assumption identical to the old behaviour.
-  try{ drawBG();drawGame();drawFG(); }
+  try{ drawBG();drawGame();drawFG();_drawFight(); }
   catch(err){ console.error('[loop] draw error:',err); _reportErr(err,'draw'); }
 
   try{

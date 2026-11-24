@@ -94,6 +94,7 @@ const ASSISTS = new Set(['hint', 'offer', 'easier', 'cleared']);
 const GIFTS = new Set(['claim']);
 const A2HS = new Set(['shown', 'ios', 'accepted', 'dismissed', 'later', 'installed']);
 const COMICS = new Set(['menu', 'i1', 'i2', 'end1', 'end2']);
+const FIGHTK = new Set(['todome_start','todome_ok','todome_fail','perfect','rise','lunge','grade_S','grade_A','grade_B','grade_C']);
 const HINTK = new Set(['move','parry','punish','attack','jump'].flatMap(h => ['saw_' + h, 'did_' + h]));
 const STOREK = new Set(['prem','season','starter'].flatMap(o => ['open','tap','signin','paid'].map(st => o + '_' + st)));
 const ENTERS = new Set(['play', 'tap', 'key', 'accept', 'decline']);
@@ -146,6 +147,10 @@ function fieldFor(body) {
   if (e === 'a2hs') {
     const k = String(body.k || '');
     return A2HS.has(k) ? 'a2hs_' + k : null;
+  }
+  if (e === 'fight') {
+    const k = String(body.k || '');
+    return FIGHTK.has(k) ? 'fight_' + k : null;
   }
   if (e === 'hint') {
     const k = String(body.k || '');
@@ -374,6 +379,12 @@ function renderReport(days, trendDays, extraTop) {
         <tr><th>Issue 1: opened / finished</th><td class="n">${comicN[1]} / ${comicN[2]}</td></tr>
         <tr><th>Issue 2: opened / finished</th><td class="n">${comicN[3]} / ${comicN[4]}</td></tr>
       </tbody></table>` : '';
+    const fightBlock = ['todome_start','perfect','rise','lunge','grade_S','grade_A','grade_B','grade_C'].some(k => g('fight_' + k)) ? `<h3>Boss fights</h3>
+      <table class="walls"><tbody>
+        <tr><th>TODOME finishing blow: started / landed / missed</th><td class="n">${g('fight_todome_start')} / ${g('fight_todome_ok')} / ${g('fight_todome_fail')}</td></tr>
+        <tr><th>Boss grades S / A / B / C</th><td class="n">${g('fight_grade_S')} / ${g('fight_grade_A')} / ${g('fight_grade_B')} / ${g('fight_grade_C')}</td></tr>
+        <tr><th>Used Perfect Parry / Rising Slash / Lunge (players per stage)</th><td class="n">${g('fight_perfect')} / ${g('fight_rise')} / ${g('fight_lunge')}</td></tr>
+      </tbody></table>` : '';
     const hintIds = [['move', 'Move'], ['attack', 'Attack'], ['jump', 'Jump'], ['parry', 'Parry now'], ['punish', 'Swing after a parry']];
     const hintBlock = hintIds.some(([h]) => g('hint_saw_' + h)) ? `<h3>Hints for new players</h3>
       <table class="walls"><tbody>
@@ -420,6 +431,7 @@ function renderReport(days, trendDays, extraTop) {
       ${comicBlock}
       ${storeBlock}
       ${hintBlock}
+      ${fightBlock}
       ${assistBlock}
       ${backBlock}
       ${tutBlock}
