@@ -2170,13 +2170,13 @@ function _specialMove(){
     P.vy=P.jp*.9;P.gnd=false;P.jumps=Math.max(0,P.jumps-1);
     P.comboStep=2;
     try{_countOnce('rise_'+lvl,'fight',{k:'rise'});}catch(e){}
-    return Object.assign({},COMBO_MOVES[2],{name:'Rising Slash',arcY:-70,arcR:110,dmgMul:1.6,label:'RISING SLASH!',labelColor:'#88ddff'});
+    return Object.assign({},COMBO_MOVES[2],{name:'Rising Slash',slash:'rise',arcY:-70,arcR:110,dmgMul:1.6,label:'RISING SLASH!',labelColor:'#88ddff'});
   }
   if(performance.now()-_lungeAt<450){
     _lungeAt=0;P.vx=P.face*16;P.inv=Math.max(P.inv,12);
     P.comboStep=1;
     try{_countOnce('lunge_'+lvl,'fight',{k:'lunge'});}catch(e){}
-    return Object.assign({},COMBO_MOVES[1],{name:'Lunge',arcX:40,arcR:100,dmgMul:1.6,label:'LUNGE!',labelColor:'#ffcc44'});
+    return Object.assign({},COMBO_MOVES[1],{name:'Lunge',slash:'thrust',arcX:40,arcR:100,dmgMul:1.6,label:'LUNGE!',labelColor:'#ffcc44'});
   }
   return null;
 }
@@ -2643,6 +2643,7 @@ function doAtk(){
   let move=COMBO_MOVES[P.comboStep];
   const _sp=_specialMove();
   if(_sp)move=_sp;
+  P.curMove=move;P.slashSeed=Math.random()*1000;
   P.atk=true;
   P.atkT=move.maxAtk;
   P.maxAtk=move.maxAtk;
@@ -2924,6 +2925,7 @@ function _reachParry(){
     const dx=q.x-px, dy=q.y-py;
     if(Math.hypot(dx,dy)>CUE_PROJ)return;
     if(dx*q.vx+dy*q.vy>=0)return;                 // receding, not a threat
+    if(q.arrow)_arrowDebris(q,'deflect');
     q.done=true;sfx.parry();_pStop=PARRY_STOP;_parryFX(0.8);shake(5);
     spawnP(q.x,q.y,'#60a5fa',14);
     addFloat(px,P.y,'PARRY!','#60a5fa');
@@ -3047,7 +3049,7 @@ function initLevel(){
   try{ const _k=_dcKey(lvl); ST.attemptsByStage[_k]=(ST.attemptsByStage[_k]||0)+1; }catch(e){}
   enemies=[];ledges=[];particles=[];coinEs=[];projs=[];floats=[];_embers=[];
   slashes=[];blasts=[];bloodSplats=[];splashes=[];corpses=[];
-  combo=0;comboT=0;maxCombo=Math.max(maxCombo,0);lvlCoins=0;lvlStartT=gt;_fightDmg=0;_lastTodome=null;_todome=null;P.trail=[];P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
+  combo=0;comboT=0;maxCombo=Math.max(maxCombo,0);lvlCoins=0;lvlStartT=gt;_fightDmg=0;_arrowFX=[];_lastTodome=null;_todome=null;P.trail=[];P.comboStep=0;P.comboWindow=0;P.atk=false;P.atkT=0;
   _prevLvlCoins=0;
   // Clear any in-flight death collapse — a revive or a restart must not
   // drop the player back in mid-fall, face down and fading out.
@@ -3645,6 +3647,10 @@ function update(){
     P.y=_groundY-P.h;
     if(P.vy>0){P.vy=0;P.gnd=true;P.jumps=2;}
   }
+  // Stride phase advances with ground covered, not with time, so a slow
+  // walk takes slow steps and a sprint fast ones and the feet stay planted.
+  {const _s=Math.abs(P.vx||0);if(P.gnd&&_s>1.2){const _o=P.ph||0;P.ph=_o+.075+_s*.022;
+    if(Math.floor(_o/Math.PI)!==Math.floor(P.ph/Math.PI))_dust(P.x+P.w/2-(P.face||1)*3,P.y+P.h-1,P.face||1);}}
   if(P.atkT>0)P.atkT--;else P.atk=false;
   if(P.punishT>0)P.punishT--;
   if(P.comboWindow>0)P.comboWindow--; else if(!P.atk) P.comboStep=0; // reset if window expires
@@ -3652,6 +3658,7 @@ function update(){
   const cfg=DIFF[diff];
   enemies.forEach(e=>{
     e.an=(e.an||0)+1;
+    e.ph=(e.ph||e.an*.22)+Math.max(.06,Math.abs(e.vx)*.16);   // stride phase, advances with distance
     if(e.hurtT>0)e.hurtT--;
     if(e.barT>0)e.barT--;
     if(e.isBoss)updateBoss(e,cfg);else updateEnemy(e,cfg);
@@ -3665,23 +3672,27 @@ function update(){
   _separateEnemies();
 
   projs.forEach(p=>{
-    p.x+=p.vx;p.y+=p.vy;
+    p.x+=p.vx;p.y+=p.vy;p.age=(p.age||0)+1;
     if(!p.done&&ri(P,{x:p.x-8,y:p.y-8,w:16,h:16})){
       if(P.parry){
+        if(p.arrow)_arrowDebris(p,'deflect');
         p.done=true;sfx.parry();_pStop=PARRY_STOP;_parryFX(0.8);shake(5);spawnP(p.x,p.y,'#60a5fa',14);
         addFloat(P.x+P.w/2,P.y,'PARRY!','#60a5fa');combo+=3;comboT=130;updateHUD();
         grantPunish(P.x+P.w/2,P.y);
       } else if(p.tut&&!P.dash){
         p.done=true;_tutArrowMissed();       // practice arrow: a lesson, not damage
       } else if(!P.dash&&P.inv<=0){
+        if(p.arrow)_arrowDebris(p,'break');
         p.done=true;P.hp-=modDmg(cfg.dmg*.55);shake(8);sfx.hit();updateHUD();
         spawnP(p.x,p.y,'#f97316',10);addFloat(P.x+P.w/2,P.y,-Math.round(modDmg(cfg.dmg*.55)),'#ff4444');
         P.vx=P.x<p.x?-7:7;P.vy=-4;
       }
     }
+    if(p.arrow&&!p.done&&p.vy>0&&p.y>=_groundY-2){_arrowDebris(p,'stick');p.done=true;}
     if(p.x<-60||p.x>VW+60||p.y>VH)p.done=true;
   });
   projs=projs.filter(p=>!p.done);
+  _tickArrowFX();
 
   coinEs.forEach(c=>{
     if(c.done)return;c.x+=c.vx;c.y+=c.vy;c.vy+=.32;
@@ -4481,6 +4492,7 @@ function drawGame(){
     gx.restore();gx.shadowBlur=0;
   });
 
+  _drawArrowFX();
   // Projectiles — realistic energy bolt
   projs.forEach(p=>{
     gx.save();gx.translate(p.x,p.y);gx.rotate(Math.atan2(p.vy,p.vx));
@@ -4493,6 +4505,12 @@ function drawGame(){
       const og=gx.createRadialGradient(0,0,0,0,0,11);
       og.addColorStop(0,'rgba(255,150,40,.22)');og.addColorStop(1,'transparent');
       gx.fillStyle=og;gx.beginPath();gx.arc(0,0,11,0,Math.PI*2);gx.fill();
+      // Motion trail: faint streaks behind the shaft.
+      gx.strokeStyle='rgba(255,220,170,.22)';gx.lineWidth=1;
+      for(const k of [-1.6,0,1.6]){gx.beginPath();gx.moveTo(-14,k);gx.lineTo(-34+Math.abs(k)*4,k*1.4);gx.stroke();}
+      // Archer's paradox: the shaft flexes and wobbles leaving the bow and
+      // settles in flight.
+      const ag=p.age||0;gx.rotate(Math.sin(ag*.9)*.09*Math.exp(-ag/18));
       drawAPart('arrow',0,0,0,1.15);
       gx.restore();return;
     }
@@ -4960,21 +4978,40 @@ function useBossAtlas(bi){
 }
 
 // Draw one piece with its joint at (x,y) in skeleton space, rotated by rot.
+// Far-side limbs (the leg and arm behind the body) used to be drawn
+// half-transparent to push them back, which let the scenery show through the
+// character like a ghost. Now they are drawn solid from a shaded copy of the
+// atlas. Pass FAR as the alpha to get it.
+const FAR=-1;
+function _darkOf(im){
+  if(im._dark)return im._dark;
+  try{
+    const c=document.createElement('canvas');c.width=im.naturalWidth||im.width;c.height=im.naturalHeight||im.height;
+    const x=c.getContext('2d');x.drawImage(im,0,0);
+    x.globalCompositeOperation='source-atop';x.fillStyle='rgba(12,8,16,.42)';x.fillRect(0,0,c.width,c.height);
+    im._dark=c;
+  }catch(e){im._dark=im;}
+  return im._dark;
+}
+function _blitF(img,p,x,y,rot,s,alpha){
+  if(alpha===FAR){_blit(_darkOf(img),p,x,y,rot,s,1);return;}
+  _blit(img,p,x,y,rot,s,alpha);
+}
 function drawPart(n,x,y,rot,sc,alpha){
   const p=PARTS[n];if(!p||!_partsReady)return;
-  _blit(_partsImg,p,x,y,rot,(sc||1)*PART_SCALE,alpha);
+  _blitF(_partsImg,p,x,y,rot,(sc||1)*PART_SCALE,alpha);
 }
 function drawEPart(n,x,y,rot,sc,alpha){
   const p=EPARTS[n];if(!p||!_epartsReady)return;
-  _blit(_epartsImg,p,x,y,rot,(sc||1)*EPART_SCALE,alpha);
+  _blitF(_epartsImg,p,x,y,rot,(sc||1)*EPART_SCALE,alpha);
 }
 function drawAPart(n,x,y,rot,sc,alpha){
   const p=APARTS[n];if(!p||!_apartsReady)return;
-  _blit(_apartsImg,p,x,y,rot,(sc||1)*APART_SCALE,alpha);
+  _blitF(_apartsImg,p,x,y,rot,(sc||1)*APART_SCALE,alpha);
 }
 function drawBPart(n,x,y,rot,sc,alpha){
   const p=BPARTS[n];if(!p||!_bpartsReady)return;
-  _blit(_bpartsImg,p,x,y,rot,(sc||1)*BPART_SCALE,alpha);
+  _blitF(_bpartsImg,p,x,y,rot,(sc||1)*BPART_SCALE,alpha);
 }
 // Scenery piece anchored at BOTTOM CENTRE — props meet the floor, so that is
 // the point worth keeping fixed when they are scaled.
@@ -5428,7 +5465,7 @@ function drawPlayer(){
 
   const spd=Math.abs(P.vx||0);
   const moving=!dead&&P.gnd&&spd>1.2;
-  const walkT=moving?gt*.2:0;
+  const walkT=moving?(P.ph||0):0;
   const walk=Math.sin(walkT)*3.5;
   const stride=Math.sin(walkT);
 
@@ -5535,7 +5572,7 @@ function drawPlayer(){
     // single leg edge-on.
     const CANT=1.15;        // torso widening — chest toward the viewer
     const STANCE=2.7;       // how far the far leg sits behind the near one
-    const FAR_A=.72;        // far-side limbs, was .5 and effectively invisible
+    const FAR_A=FAR;        // far-side limbs: solid and shaded (see _darkOf)
 
     const leg=(dir,alpha)=>{
       const hip =dir>0?_sp.hipF :_sp.hipB;
@@ -6015,64 +6052,110 @@ function drawPlayer(){
 // The slash arc, lifted out of drawPlayer so the procedural rig and the
 // cutout rig can both call it. It is drawn in the player's local space, so
 // it must be called inside the same transform that drew the body.
+// ═══ SLASHES ═══
+// Each cut is a brush stroke, not a ring: a crescent that is thick where the
+// blade is and tapers to a point behind it, with an ink edge, a coloured body,
+// a white-hot cutting edge and flecks thrown off the tail. The moves differ in
+// shape, so the player can read which hit just landed:
+//   Overhead   a heavy downward crescent
+//   Side Cut   a flat, fast, squashed sweep
+//   Finisher   two strokes, the second a beat behind the first
+//   Rising     a tall upward crescent
+//   Lunge      a straight thrust streak instead of an arc
+function _crescent(cx,cy,R,a0,a1,W,rgb,glow,alpha,sy,seed){
+  if(a1<=a0+.02)return;
+  const n=22,out=[],inn=[];
+  for(let i=0;i<=n;i++){
+    const u=i/n,a=a0+(a1-a0)*u;
+    // thick near the head (u=1), needle-thin at the tail
+    const w=W*Math.sin(Math.PI*Math.pow(u,.55)*.98+.02)*(.35+.65*u);
+    out.push([cx+Math.cos(a)*(R+w*.5),cy+Math.sin(a)*(R+w*.5)*sy]);
+    inn.push([cx+Math.cos(a)*(R-w*.5),cy+Math.sin(a)*(R-w*.5)*sy]);
+  }
+  const path=(k)=>{gx.beginPath();gx.moveTo(out[0][0],out[0][1]);
+    for(let i=1;i<=n;i++)gx.lineTo(out[i][0],out[i][1]);
+    for(let i=n;i>=0;i--)gx.lineTo(inn[i][0]+(k||0),inn[i][1]);gx.closePath();};
+  gx.save();gx.globalAlpha=alpha;
+  // ink body, slightly larger, gives the stroke a dark brushed edge
+  gx.fillStyle='rgba(10,6,14,.55)';gx.save();gx.translate(1.2,1.2);path();gx.fill();gx.restore();
+  // coloured body
+  const [r,g,b]=rgb.split(',');
+  gx.fillStyle=`rgba(${r},${g},${b},.82)`;gx.shadowBlur=18;gx.shadowColor=glow;path();gx.fill();gx.shadowBlur=0;
+  // white-hot cutting edge along the outside of the arc, head end only
+  gx.strokeStyle='rgba(255,252,240,.95)';gx.lineWidth=1.6;gx.lineCap='round';gx.beginPath();
+  for(let i=Math.floor(n*.35);i<=n;i++){const [x,y]=out[i];i===Math.floor(n*.35)?gx.moveTo(x,y):gx.lineTo(x,y);}
+  gx.stroke();
+  // dry-brush streaks inside the body
+  gx.strokeStyle='rgba(10,6,14,.35)';gx.lineWidth=.7;
+  for(let k=0;k<3;k++){const f=.25+k*.22;gx.beginPath();
+    for(let i=Math.floor(n*.2);i<=n;i++){const a=a0+(a1-a0)*i/n;const rr=R+(f-.5)*W*.6;const x=cx+Math.cos(a)*rr,y=cy+Math.sin(a)*rr*sy;i===Math.floor(n*.2)?gx.moveTo(x,y):gx.lineTo(x,y);}
+    gx.stroke();}
+  // ink flecks thrown off the tail, fixed per swing by its seed
+  gx.fillStyle='rgba(20,12,24,.45)';
+  for(let k=0;k<5;k++){
+    const h=Math.sin(seed*12.9+k*78.2)*43758.5,fr=h-Math.floor(h);
+    const a=a0+(a1-a0)*(.1+fr*.5),rr=R+(fr-.5)*W*2.4;
+    gx.beginPath();gx.ellipse(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr*sy,.5+fr*1.1,.35+fr*.6,a,0,Math.PI*2);gx.fill();
+  }
+  gx.restore();
+}
+function _thrust(x0,x1,y,W,rgb,glow,alpha){
+  if(x1<=x0+1)return;
+  const [r,g,b]=rgb.split(',');
+  gx.save();gx.globalAlpha=alpha;
+  const shape=(k)=>{gx.beginPath();gx.moveTo(x0,y);gx.quadraticCurveTo((x0+x1)/2,y-W*k,x1,y);gx.quadraticCurveTo((x0+x1)/2,y+W*k*.6,x0,y);gx.closePath();};
+  gx.fillStyle='rgba(10,6,14,.5)';gx.save();gx.translate(1,1.2);shape(.6);gx.fill();gx.restore();
+  gx.fillStyle=`rgba(${r},${g},${b},.85)`;gx.shadowBlur=16;gx.shadowColor=glow;shape(.5);gx.fill();gx.shadowBlur=0;
+  gx.strokeStyle='rgba(255,252,240,.95)';gx.lineWidth=1.4;gx.beginPath();gx.moveTo(x0+(x1-x0)*.3,y-1);gx.lineTo(x1,y);gx.stroke();
+  // speed lines
+  gx.strokeStyle=`rgba(${r},${g},${b},.5)`;gx.lineWidth=.8;
+  for(let k=-2;k<=2;k++){if(!k)continue;gx.beginPath();gx.moveTo(x0-10,y+k*W*.45);gx.lineTo(x0+(x1-x0)*.55,y+k*W*.3);gx.stroke();}
+  gx.restore();
+}
 function drawAttackArc(){
-  if(P.atk){
-    const prog=P.atkT/P.maxAtk;
-    const _mv=COMBO_MOVES[P.comboStep]||COMBO_MOVES[0];
-    // The Champion style is a prize, so it has to show: every swing is drawn
-    // in its own gold and crimson instead of the move's usual colour.
-    const move=styleKey==='champion'?Object.assign({},_mv,{color:ELEMENT_SKINS.champion.color,glow:ELEMENT_SKINS.champion.glow}):_mv;
-    const [r,g,b]=move.color.split(',');
-    // The whole arc used to be drawn at once on the first frame and then
-    // fade in place. That is a flash, not a cut — the shape never moved, so
-    // it never looked like the blade had travelled. Now only the swept part
-    // is drawn: a leading edge that runs ahead of the blade and a trailing
-    // edge that lags behind it, so the arc is carved out across the swing
-    // and the tail catches up at the end. Same geometry per combo move —
-    // arcA/arcB still define where each move's cut lives.
-    const t=1-prog;                                // 0 → 1 across the swing
+  if(!P.atk)return;
+  const prog=P.atkT/P.maxAtk;
+  const _mv=P.curMove||COMBO_MOVES[P.comboStep]||COMBO_MOVES[0];
+  // The Champion style is a prize, so it has to show: every swing is drawn
+  // in its own gold and crimson instead of the move's usual colour.
+  const move=styleKey==='champion'?Object.assign({},_mv,{color:ELEMENT_SKINS.champion.color,glow:ELEMENT_SKINS.champion.glow}):_mv;
+  const t=1-prog;                                // 0 → 1 across the swing
+  const ss=v=>{const c=Math.max(0,Math.min(1,v));return c*c*(3-2*c);};
+  const fade=Math.min(1,t*6)*(1-Math.max(0,(t-.55)/.45));
+  const seed=P.slashSeed||0;
+  const kind=move.slash||['over','side','fin'][P.comboStep]||'over';
+  if(kind==='thrust'){
+    const head=ss(t*1.7),tail=ss((t-.25)/.6);
+    _thrust(8+tail*(move.arcR*1.1),8+head*(move.arcR*1.35),27,10,move.color,move.glow,fade);
+  } else {
     const span=move.arcB-move.arcA;
-    const ss=v=>{const c=Math.max(0,Math.min(1,v));return c*c*(3-2*c);};
-    const aHead=move.arcA+span*ss(t*1.5);          // blade edge, runs ahead
-    const aTail=move.arcA+span*ss((t-.28)/.62);    // tail, lags behind
-    // Hold it solid while the cut is travelling, then fade the whole streak.
-    const fade=Math.min(1,t*6)*(1-Math.max(0,(t-.55)/.45));
-    if(aHead>aTail+.02){
-      gx.save();gx.globalAlpha=fade;
-      // Wide, faint body of the streak — the air the blade moved.
-      gx.strokeStyle=`rgba(${r},${g},${b},.22)`;
-      gx.lineWidth=P.comboStep===2?13:9;gx.shadowBlur=0;gx.lineCap='round';
-      gx.beginPath();gx.arc(move.arcX,move.arcY,move.arcR*.97,aTail,aHead);gx.stroke();
-      // Main slash arc — color and size from move
-      gx.strokeStyle=`rgba(${r},${g},${b},.95)`;
-      gx.lineWidth=P.comboStep===2?4.5:3;
-      gx.shadowBlur=P.comboStep===2?35:22;
-      gx.shadowColor=move.glow;
-      gx.beginPath();gx.arc(move.arcX,move.arcY,move.arcR,aTail,aHead);gx.stroke();
-      // Inner fine arc
-      gx.strokeStyle='rgba(255,255,255,.45)';gx.lineWidth=1.5;gx.shadowBlur=10;
-      gx.beginPath();gx.arc(move.arcX,move.arcY,move.arcR*.78,aTail-.1,aHead-.1);gx.stroke();
-      // Finisher — extra outer ring
-      if(P.comboStep===2){
-        gx.strokeStyle='rgba(100,180,255,.3)';gx.lineWidth=1;gx.shadowBlur=5;
-        gx.beginPath();gx.arc(move.arcX,move.arcY,move.arcR*1.25,aTail,aHead);gx.stroke();
+    const aHead=move.arcA+span*ss(t*1.5),aTail=move.arcA+span*ss((t-.28)/.62);
+    const W={over:15,side:15,fin:17,rise:16}[kind]||13;
+    const sy=kind==='side'?.62:1;
+    if(kind==='rise'){
+      // upward crescent: swept from low in front up over the head
+      const a0=1.2,a1=-1.9,h=a0+(a1-a0)*ss(t*1.5),tl=a0+(a1-a0)*ss((t-.28)/.62);
+      _crescent(move.arcX||18,-20,move.arcR*.8,Math.min(h,tl),Math.max(h,tl),W,move.color,move.glow,fade,1,seed);
+    } else {
+      if(kind==='side'){
+        // a wide flat sweep at chest height, right where the blade travels
+        const a0=-1.35,a1=1.1,h=a0+(a1-a0)*ss(t*1.8),tl=a0+(a1-a0)*ss((t-.4)/.6);
+        _crescent(0,24,66,tl,h,W,move.color,move.glow,fade,.5,seed);
+      } else
+      _crescent(move.arcX,move.arcY,move.arcR,aTail,aHead,W,move.color,move.glow,fade,sy,seed);
+      if(kind==='fin'){
+        const t2=Math.max(0,t-.14),h2=move.arcA+span*ss(t2*1.5),tl2=move.arcA+span*ss((t2-.28)/.62);
+        _crescent(move.arcX,move.arcY,move.arcR*.72,tl2,h2,W*.6,'235,245,255',move.glow,fade*.85,1,seed+7);
       }
-      gx.restore();
     }
-    gx.save();gx.globalAlpha=fade;
-    // Scatter sparks — thrown from the leading edge, where the blade is,
-    // rather than sprinkled at random over the whole arc.
-    const sc=move.sparkColor||'#ffee80';
-    if(Math.random()<(P.comboStep===2?.7:.4)){
-      gx.fillStyle=sc;gx.shadowBlur=8;gx.shadowColor=move.glow;
-      const sr=move.arcR*(.9+Math.random()*.22);
-      const sa=aHead+(Math.random()-.5)*.25;
-      gx.beginPath();
-      gx.arc(move.arcX+Math.cos(sa)*sr,move.arcY+Math.sin(sa)*sr,
-             P.comboStep===2?2.5:1.5,0,Math.PI*2);
-      gx.fill();
-    }
-    gx.restore();gx.shadowBlur=0;
+  }
+  // sparks from the leading edge
+  if(kind!=='thrust'&&Math.random()<(kind==='fin'?.7:.4)){
+    const span=move.arcB-move.arcA,aHead=move.arcA+span*ss(t*1.5);
+    gx.save();gx.globalAlpha=fade;gx.fillStyle=move.sparkColor||'#ffee80';gx.shadowBlur=8;gx.shadowColor=move.glow;
+    const sr=move.arcR*(.9+Math.random()*.22),sa=aHead+(Math.random()-.5)*.25;
+    gx.beginPath();gx.arc(move.arcX+Math.cos(sa)*sr,move.arcY+Math.sin(sa)*sr*(kind==='side'?.62:1),kind==='fin'?2.5:1.5,0,Math.PI*2);gx.fill();
+    gx.restore();
   }
 }
 
@@ -6105,7 +6188,7 @@ function drawEnemy(e){
   // cannot drift apart.
   if(_apartsReady&&e.type==='archer'&&!e.isBoss){
     const eMov=Math.abs(e.vx)>.1;
-    const st=Math.sin(e.an*.22);
+    const st=Math.sin(e.ph||e.an*.22);
     const hurt=(e.hurtT||0)/7;
     const pull=e.shotCD<28?Math.min(1,(28-e.shotCD)/28):0;   // drawing
     const snap=e.shotCD>82?Math.min(1,(e.shotCD-82)/8):0;    // release recoil
@@ -6121,15 +6204,15 @@ function drawEnemy(e){
                  -Math.abs(Math.sin(e.an*.22))*(eMov?1.6:0)+Math.sin(e.an*.05)*(eMov?.7:1.6));
 
     const aleg=(dir,al)=>{
-      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*.24+(pull>0?dir*.10:0));
+      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.40:.05)+(pull>0?dir*.10:0));
       drawAPart('leg',0,0,0,1,al);gx.restore();
     };
 
-    aleg(-1,.5);
+    aleg(-1,FAR);
     drawAPart('quiver',-5,14,-.35,1,.85);          // slung on the back
     // Back arm: pulls to the ear as the draw builds.
     gx.save();gx.translate(SX-1.4,SY);gx.rotate(.55+pull*.75-snap*.5);
-    drawAPart('uparm',0,0,0,1,.55);gx.restore();
+    drawAPart('uparm',0,0,0,1,FAR);gx.restore();
     aleg(1,1);
     drawAPart('torso',0,1.5,-hurt*.22+pull*.05);
     // Bow arm: upper arm out, then the forearm-and-bow as one piece. It braces
@@ -6160,7 +6243,8 @@ function drawEnemy(e){
   // below instead of quantising them to a row of frames.
   if(_epartsReady&&!e.isBoss&&e.type!=='tengu'){
     const eMov=Math.abs(e.vx)>.1;
-    const st=Math.sin(e.an*.22);
+    const ph=e.ph||e.an*.22,st=Math.sin(ph);
+    const spd=Math.min(1,Math.abs(e.vx)/2.5);
     const hurt=(e.hurtT||0)/7;
     const sw=e.atkCD>62?(e.atkCD-62)/20:0;
     // HY is derived, not guessed: foot = HY + KN + shinHeight*(1-pivotY),
@@ -6168,6 +6252,7 @@ function drawEnemy(e){
     // The ENEMY skeleton stands on y=56 (its procedural legs run 40..56), not
     // the player's 58 — using the player's number left the ninja hovering.
     const HX=1.5,HY=35.6,KN=0,SX=1.2,SY=10,UA=11,FA=12;
+    const _m0=gx.getTransform();
 
     if(e.dieAt){
       const d=Math.min(1,(performance.now()-e.dieAt)/CORPSE_MS),ee=d*d;
@@ -6175,11 +6260,16 @@ function drawEnemy(e){
       gx.translate(-ee*5,d*9);
       gx.globalAlpha=1-Math.max(0,d-.5)/.5*.62;
     }
-    gx.translate(hurt*hurt*8*(e.hurtDir||1)*e.face, -Math.abs(Math.sin(e.an*.22))*(eMov?1.8:0)+Math.sin(e.an*.055)*(eMov?.8:1.8));
+    // Body rises over the planted foot and dips as the legs pass (two bobs
+    // per stride), and leans into the walk.
+    gx.translate(hurt*hurt*8*(e.hurtDir||1)*e.face, -Math.abs(Math.cos(ph))*(eMov?2.4*spd+.6:0)+Math.sin(e.an*.055)*(eMov?.6:1.8));
+    if(eMov){gx.translate(0,56);gx.rotate(.07*spd);gx.translate(0,-56);}
+    if(eMov&&e.gnd!==false&&Math.abs(Math.cos(ph))>.985&&(e._dustT||0)<e.an-8){e._dustT=e.an;_dust(e.x+e.w/2-e.face*4,e.y+e.h-2,e.face);}
 
     const eleg=(dir,al)=>{
-      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*.26);
-      gx.translate(.4,KN);gx.rotate(Math.max(0,-st*dir)*.4);
+      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.30+.22*spd:.06));
+      // The trailing leg lifts its foot off the ground on the way forward.
+      gx.translate(.4,KN-(eMov?Math.max(0,Math.cos(ph)*dir)*2.2*spd:0));gx.rotate(Math.max(0,-st*dir)*(.4+.45*spd));
       drawEPart('shin',0,0,0,1,al);
       gx.restore();
     };
@@ -6188,10 +6278,10 @@ function drawEnemy(e){
     const eArm=-sw*1.5+.35+st*(eMov?.12:0)-hurt*.4;
     const eElb=.5+sw*.5;
 
-    eleg(-1,.5);
+    eleg(-1,FAR);
     gx.save();gx.translate(SX-1.6,SY);gx.rotate(eArm*.5+.3);
-    drawEPart('uparm',0,0,0,1,.5);
-    gx.translate(0,UA);gx.rotate(eElb*.7);drawEPart('forearm',0,0,0,1,.5);
+    drawEPart('uparm',0,0,0,1,FAR);
+    gx.translate(0,UA);gx.rotate(eElb*.7);drawEPart('forearm',0,0,0,1,FAR);
     gx.restore();
     eleg(1,1);
     drawEPart('torso',0,2.4,-hurt*.25);
@@ -6202,7 +6292,25 @@ function drawEnemy(e){
     drawEPart('forearm',0,0,0);
     drawEPart('katana',1,FA,-Math.PI/2+.9-eArm-eElb);
     gx.restore();
+    // The ninja's own cut: a cold steel crescent that follows the blade
+    // through the strike, so the player sees the hit that just landed.
+    if(sw>0&&!e.dieAt){
+      const t=1-sw,ss=v=>{const c=Math.max(0,Math.min(1,v));return c*c*(3-2*c);};
+      const a0=-1.9,a1=.9,h=a0+(a1-a0)*ss(t*1.5),tl=a0+(a1-a0)*ss((t-.3)/.6);
+      _crescent(8,22,26,tl,h,6.5,'215,225,240','#b8c8ff',Math.min(1,t*5)*(1-Math.max(0,(t-.6)/.4)),1,e.an);
+    }
     if(e.type==='shield')_drawTarge(e);
+    // Smoke on death: the ninja goes down in a burst of grey smoke.
+    if(e.dieAt){
+      const d=Math.min(1,(performance.now()-e.dieAt)/700);
+      if(d<1){gx.setTransform(_m0);
+        for(let k=0;k<7;k++){
+          const a=k*2.4+(e.an||0),r=6+d*20*(.6+.4*Math.sin(k*3.1));
+          gx.globalAlpha=(1-d)*.55;gx.fillStyle=k%2?'#9a96a0':'#6f6b76';
+          gx.beginPath();gx.arc(Math.cos(a)*r,34+Math.sin(a)*r*.7-d*10,4+d*9,0,Math.PI*2);gx.fill();
+        }
+        gx.globalAlpha=1;}
+    }
     gx.restore();
     return;
   }
@@ -6424,6 +6532,24 @@ function drawEnemy(e){
 // ═══════════════════════════════════════════════════════
 // BOSS — Realistic dark lord
 // ═══════════════════════════════════════════════════════
+// The cloth under a boss's armour takes its colour from the armour itself:
+// the torso plate is sampled once per atlas and darkened, so the Blood
+// Shogun gets oxblood cloth and the Jade Serpent a deep green.
+function _clothOf(im){
+  if(!im)return {dark:'#141117',mid:'#2b2731'};
+  if(im._cloth)return im._cloth;
+  let r=40,g=36,b=46;
+  try{
+    const p=BPARTS.torso,c=document.createElement('canvas');c.width=c.height=24;
+    const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,p[0],p[1],p[2],p[3],0,0,24,24);
+    const d=x.getImageData(0,0,24,24).data;let n=0;r=g=b=0;
+    for(let i=0;i<d.length;i+=4){if(d[i+3]<200)continue;r+=d[i];g+=d[i+1];b+=d[i+2];n++;}
+    if(n){r/=n;g/=n;b/=n;}
+  }catch(e){}
+  const f=(k,m)=>Math.round(Math.min(255,k*m));
+  im._cloth={dark:`rgb(${f(r,.38)},${f(g,.38)},${f(b,.38)})`,mid:`rgb(${f(r,.8)},${f(g,.8)},${f(b,.8)})`};
+  return im._cloth;
+}
 function drawBoss(e){
   gx.save();gx.translate(e.x+e.w/2,e.y);gx.scale(e.face,1);
   const p2=e.phase===2,bob=Math.sin(e.an*.035)*4;gx.translate(0,bob);
@@ -6453,16 +6579,48 @@ function drawBoss(e){
       gx.globalAlpha=1-Math.max(0,d-.5)/.5*.6;
     }
 
+    // Heavy footfalls: the whole body sinks as each foot lands.
+    if(gait)gx.translate(0,Math.abs(Math.cos(e.an*.10))*-2.2);
     // Enraged: the whole figure runs hotter and breathes harder.
     if(p2){gx.translate(Math.sin(e.an*.5)*.8,0);}
 
+    // Cloth under the armour. The rig is separate plates with nothing between
+    // them, so as he walks the hips and knees open up and the background shows
+    // through: armour floating in the air. A dark padded under-layer (leg
+    // wraps, sleeves, a hakama skirt) fills every joint and moves with it.
+    const _cc=_clothOf(_bpartsImg),CL=p2?'#1c0d0f':_cc.dark;
+    const limb=(x1,y1,x2,y2,w,col)=>{gx.strokeStyle=col||CL;gx.lineCap='round';gx.lineWidth=w;gx.beginPath();gx.moveTo(x1,y1);gx.lineTo(x2,y2);gx.stroke();};
     const bleg=(dir,al)=>{
-      gx.save();gx.translate(HX+dir*6.5,HY);gx.rotate(gait*dir*.20);
+      gx.save();gx.translate(HX+dir*6.5,HY);gx.rotate(gait*dir*.30);
+      limb(0,-4,.5,KNEE+1,10.5,al===FAR?'#07060a':CL);
       drawBPart('thigh',0,0,0,1,al);
-      gx.translate(.5,KNEE);gx.rotate(Math.max(0,-gait*dir)*.35);
+      gx.translate(.5,KNEE);gx.rotate(Math.max(0,-gait*dir)*.55);
+      limb(0,-2,0,22,8.5,al===FAR?'#07060a':CL);
       drawBPart('shin',0,0,0,1,al);gx.restore();
     };
-
+    // Hakama: a skirt from the sash to just above the knee that swings
+    // against the stride, with fold lines so it reads as cloth, not a box.
+    const hakama=()=>{
+      const sw=gait*3.2,top=60,hem=80;
+      const g=gx.createLinearGradient(HX-18,0,HX+18,0);
+      g.addColorStop(0,p2?'#160709':_cc.dark);g.addColorStop(.55,p2?'#3a171a':_cc.mid);g.addColorStop(1,p2?'#200a0c':_cc.dark);
+      gx.fillStyle=g;gx.beginPath();
+      gx.moveTo(HX-14,top);gx.lineTo(HX+14,top);
+      gx.quadraticCurveTo(HX+18,top+10,HX+19+sw,hem);
+      // ragged, layered hem: pleats end at slightly different lengths
+      const pts=[[1,0],[.8,2.2],[.6,.4],[.4,2.6],[.2,.6],[0,1.8]];
+      for(const [t,d] of pts)gx.lineTo(HX-18+sw+t*37,hem+d);
+      gx.quadraticCurveTo(HX-18,top+10,HX-14,top);gx.closePath();gx.fill();
+      // pleats: dark creases with a lit edge beside each
+      for(const f of [-10,-3.5,3,9.5]){
+        gx.strokeStyle='rgba(0,0,0,.55)';gx.lineWidth=1.2;
+        gx.beginPath();gx.moveTo(HX+f*.75,top+2);gx.lineTo(HX+f*1.08+sw*.8,hem);gx.stroke();
+        gx.strokeStyle='rgba(190,180,210,.13)';gx.lineWidth=.8;
+        gx.beginPath();gx.moveTo(HX+f*.75+1.2,top+2);gx.lineTo(HX+f*1.08+sw*.8+1.2,hem);gx.stroke();
+      }
+      // shadow under the sash so the skirt sits behind the belt
+      gx.fillStyle='rgba(0,0,0,.45)';gx.fillRect(HX-14,top,28,3);
+    };
     // Cloak hangs off the shoulders and lags the walk. It is drawn MIRRORED:
     // the clasp is painted at the left of its cell and the tatters flare right,
     // so unmirrored it sweeps forward across his chest no matter where the
@@ -6471,13 +6629,16 @@ function drawBoss(e){
     gx.save();gx.scale(-1,1);
     drawBPart('cloak',4,30,.22+gait*.10,1,.92);
     gx.restore();
-    bleg(-1,.72);
+    bleg(-1,FAR);
     gx.save();gx.translate(SX-9,SY);gx.rotate(.5+gait*.12);
-    drawBPart('uparm2',0,0,0,1,.72);
+    limb(0,0,0,UA,8,'#07060a');
+    drawBPart('uparm2',0,0,0,1,FAR);
     gx.translate(0,UA);gx.rotate(.35);
-    drawBPart('forearm2',0,0,0,1,.72);
+    drawBPart('forearm2',0,0,0,1,FAR);
     gx.restore();
+    hakama();
     bleg(1,1);
+    limb(1,18,1,28,9);                         // neck, under the helmet
     drawBPart('torso',0,23,-wind*.06);
     drawBPart('head',1,22,wind*.08+(p2?Math.sin(e.an*.4)*.02:0));
 
@@ -6485,9 +6646,11 @@ function drawBoss(e){
     gx.save();
     gx.translate(SX,SY);
     gx.rotate(-.35-wind*1.55+gait*.10);
+    limb(0,0,0,UA+1,8);
     drawBPart('uparm',0,0,0);
     gx.translate(0,UA);
     gx.rotate(.45-wind*.45);
+    limb(0,0,10,0,6.5);
     drawBPart('forearm',0,0,0);
     drawBPart('club',2,FA,-.5+wind*.6);
     gx.restore();
@@ -7303,6 +7466,38 @@ function saveData(){
 }
 function loadData(){try{const d=JSON.parse(localStorage.getItem('sv5'))||JSON.parse(localStorage.getItem('sv4'));if(d){highestLvl=d.highestLvl||1;styleKey=d.styleKey||'blue';isPrem=d.isPrem||false;coins=d.coins||0;hpLvl=d.hpLvl||1;dmgLvl=d.dmgLvl||1;sprLvl=d.sprLvl||1;dshLvl=d.dshLvl||1;pryLvl=d.pryLvl||1;if(d.diff&&DIFF[d.diff])diff=d.diff;}}catch(e){}}
 
+// Arrows no longer just vanish. A parried arrow spins away, one that hits
+// breaks and drops, and one that reaches the ground sticks in it for a moment.
+let _arrowFX=[];
+function _arrowDebris(p,kind){
+  if(_arrowFX.length>24)_arrowFX.shift();
+  const a=Math.atan2(p.vy,p.vx);
+  if(kind==='stick')_arrowFX.push({x:p.x,y:_groundY-1,a,va:0,vx:0,vy:0,life:120,stuck:true,sc:1});
+  else if(kind==='deflect')_arrowFX.push({x:p.x,y:p.y,a,va:(Math.random()<.5?-1:1)*(.35+Math.random()*.2),vx:-p.vx*.45,vy:-4-Math.random()*2,life:60,sc:1});
+  else _arrowFX.push({x:p.x,y:p.y,a,va:(Math.random()-.5)*.5,vx:-p.vx*.15,vy:-1.5,life:45,sc:.62});
+}
+function _tickArrowFX(){
+  for(const f of _arrowFX){f.life--;if(f.stuck)continue;
+    f.x+=f.vx;f.y+=f.vy;f.vy+=.35;f.a+=f.va;
+    if(f.y>=_groundY-1){f.y=_groundY-1;f.vy*=-.25;f.vx*=.6;f.va*=.5;if(Math.abs(f.vy)<.6){f.vy=0;f.va=0;f.vx*=.8;}}}
+  _arrowFX=_arrowFX.filter(f=>f.life>0);
+}
+function _drawArrowFX(){
+  if(!_apartsReady||!_arrowFX.length)return;
+  for(const f of _arrowFX){
+    gx.save();gx.globalAlpha=Math.min(1,f.life/20);gx.translate(f.x,f.y);
+    if(f.stuck){
+      // tip buried in the ground (clipped at the ground line), and the
+      // shaft quivers for the first few frames after it lands
+      gx.beginPath();gx.rect(-60,-60,120,60);gx.clip();
+      gx.rotate(f.a+Math.sin(f.life*1.3)*.06*Math.max(0,(f.life-100)/20));
+      drawAPart('arrow',-14,0,0,1.15);
+    } else {gx.rotate(f.a);drawAPart('arrow',0,0,0,1.15*f.sc);}
+    gx.restore();
+  }
+}
+// A footstep puff: low, slow, drifting back from the direction of travel.
+function _dust(x,y,face){if(particles.length>260)return;for(let i=0;i<3;i++)particles.push({x:x+(Math.random()-.5)*6,y,vx:-face*(.4+Math.random()*.9),vy:-(.2+Math.random()*.5),life:18+Math.random()*10,color:'#8c8276',size:Math.random()*2.2+1.2});}
 function spawnP(x,y,c,n){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*13,vy:(Math.random()-.5)*13,life:38+Math.random()*14,color:c,size:Math.random()*5+1});}
 // One word callout at a time. In a fast combo FINISHER, PUNISH, PARRY, Side
 // Cut and the coin multiplier all fired within a few frames and stacked into
