@@ -5587,6 +5587,10 @@ function drawPlayer(){
     // sash, knee at the thigh's strap, foot on y=58.
     const HIP_X=-1.4,HIP_Y=13.6,KNEE=26.4;
     const SH_X=-2.0,SH_Y=-.8,UPARM=11.4,FOREARM=12.5,ARM_SC=.70,FIST_X=-.62;
+    // The old forearm art was painted slanting forward ~30 degrees and every
+    // pose was tuned around that slant. The new one hangs straight, so it is
+    // turned forward by the same amount or the elbow bends backwards.
+    const FA_OFF=.52;
 
     // Turning him a few degrees toward the camera. The art is painted in flat
     // side profile, so a real three-quarter view would need new art — but the
@@ -5629,7 +5633,7 @@ function drawPlayer(){
     gx.rotate(armRot*.55+.30);
     drawPart('uparm2',0,0,0,ARM_SC,FAR_A);
     gx.translate(0,UPARM);
-    gx.rotate(elbow*.7);
+    gx.rotate(elbow*.7-FA_OFF);
     drawPart('forearm2',0,0,0,ARM_SC,FAR_A);
     gx.restore();
     // (The new torso has its far shoulder guard painted on.)
@@ -5650,11 +5654,11 @@ function drawPlayer(){
     gx.rotate(armRot);
     drawPart('uparm',0,0,0,ARM_SC);
     gx.translate(0,UPARM);
-    gx.rotate(elbow);
+    gx.rotate(elbow-FA_OFF);
     // The katana art lies horizontal pointing right; the skeleton's sword
     // points up, hence the -PI/2. The joint rotations are subtracted so swayA
     // stays the blade's angle in the BODY's space, not the forearm's.
-    drawPart('katana',FIST_X,FOREARM,-Math.PI/2+swayA-armRot-elbow,.74);
+    drawPart('katana',FIST_X,FOREARM,-Math.PI/2+swayA-armRot-elbow+FA_OFF,.74);
     drawPart('forearm',0,0,0,ARM_SC);          // over the grip: the fist holds it
     gx.restore();
 
