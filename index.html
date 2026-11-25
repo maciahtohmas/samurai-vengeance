@@ -2718,6 +2718,16 @@ function _drawTarge(e){
   gx.translate(-brace*3+shove*5,-brace*2);
   gx.rotate(-brace*.16+shove*.12);
   if(e.guardT>0){gx.globalAlpha*=.45;gx.rotate(.5);}   // guard broken: lowered and dim
+  if(_shieldImg){
+    // Tier by chapter: planks early, iron bands mid-game, elite plate late.
+    const t=lvl<=20?0:lvl<=40?1:2,r=SHIELDS[t];
+    const H=40,W=H*r[2]/r[3];
+    gx.translate(-15,31);
+    gx.scale(-1,1);                       // undo the mirror so the crest reads right
+    gx.drawImage(_shieldImg,r[0],r[1],r[2],r[3],-W/2,-H/2,W,H);
+    gx.restore();
+    return;
+  }
   const shldG=gx.createLinearGradient(-30,12,-14,44);shldG.addColorStop(0,'#162040');shldG.addColorStop(.3,'#1e3a8a');shldG.addColorStop(.6,'#162040');shldG.addColorStop(1,'#0c1428');
   gx.fillStyle=shldG;gx.beginPath();gx.moveTo(-28,10);gx.lineTo(-14,10);gx.lineTo(-14,44);gx.lineTo(-24,48);gx.lineTo(-30,40);gx.closePath();gx.fill();
   // Shield rim — hammered bronze
@@ -4947,6 +4957,11 @@ _loadAtlas(PARTS_SRC ,im=>{_partsImg=im;_partsReady=true;},  'player');
 _loadAtlas(EPARTS_SRC,im=>{_epartsImg=im;_epartsReady=true;},'enemy');
 _loadAtlas(ENV_SRC   ,im=>{_envImg=im;_envReady=true;},    'scenery');
 _loadAtlas(APARTS_SRC,im=>{_apartsImg=im;_apartsReady=true;},'archer');
+// Painted te-date shields, three tiers: rope-bound planks, iron-banded
+// lacquer (with an arrow in it), and iron-plated elite.
+const SHIELD_SRC=['shield-parts.png'],SHIELDS=[[0,0,80,184],[83,0,110,193],[196,0,94,198]];
+let _shieldImg=null;
+_loadAtlas(SHIELD_SRC,im=>{_shieldImg=im;},'shield');
 _loadAtlas(BPARTS_SRC,im=>{_bpartsImg=im;_bpartsReady=true;_bossAtlas[0]=im;},'boss');
 
 // ── Per-boss atlases ──────────────────────────────────────────────────
