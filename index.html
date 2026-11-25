@@ -6287,10 +6287,27 @@ function drawEnemy(e){
     const eBlade=sw>0?-Math.PI/2-.6+(1-sw)*2.5:-Math.PI/2+.75;   // chop follows through low
 
     eleg(-1,FAR);
-    gx.save();gx.translate(SX-1.6,SY);gx.rotate(.25+st*(eMov?-.25:0));
-    drawEPart('uparm',0,0,0,1,FAR);
-    gx.translate(0,UA);gx.rotate(-.5);drawEPart('forearm',0,0,0,1,FAR);
-    gx.restore();
+    // Far arm: two-handed grip. Its fist is placed on the handle just behind
+    // the near fist, and the shoulder and elbow are solved to reach it, so
+    // both hands stay on the sword through the walk and the strike.
+    {
+      const rot=(x,y,t)=>[x*Math.cos(t)-y*Math.sin(t),x*Math.sin(t)+y*Math.cos(t)];
+      const e1=rot(0,UA,eArm),e2=rot(0,FA,eArm+eElb);
+      const fx=SX+e1[0]+e2[0],fy=SY+e1[1]+e2[1];          // near fist
+      const tx=fx-Math.cos(eBlade)*3.6,ty=fy-Math.sin(eBlade)*3.6;  // further down the grip
+      const sx=SX-2.2,sy=SY+.4;
+      let dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy);const L1=UA,L2=FA;
+      d=Math.max(Math.abs(L1-L2)+.01,Math.min(L1+L2-.01,d));
+      const base=Math.atan2(dy,dx),c=Math.acos((L1*L1+d*d-L2*L2)/(2*L1*d));
+      const a1=base+c;                                     // elbow bends down and back
+      const ex=sx+Math.cos(a1)*L1,ey=sy+Math.sin(a1)*L1;
+      const a2=Math.atan2(ty-ey,tx-ex);
+      const t1=a1-Math.PI/2,t2=a2-Math.PI/2;
+      gx.save();gx.translate(sx,sy);gx.rotate(t1);
+      drawEPart('uparm',0,0,0,1,FAR);
+      gx.translate(0,L1);gx.rotate(t2-t1);drawEPart('forearm',0,0,0,1,FAR);
+      gx.restore();
+    }
     eleg(1,1);
     drawEPart('torso',0,0,-hurt*.25);
     gx.save();gx.translate(SX,SY);gx.rotate(eArm);
