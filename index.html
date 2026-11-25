@@ -4841,7 +4841,7 @@ const PARTS={
 };
 // Enemy atlas. Same idea, fewer pieces — the ninja's head is painted onto his
 // torso, which is fine because enemies never turn their heads independently.
-const EPARTS_SRC=['ninja-parts.png','sprites/ninja-parts.png'];
+const EPARTS_SRC=['ninja2-parts.png','ninja-parts.png'];
 const ENV_SRC=['env-parts.png','sprites/env-parts.png'];
 // The archer gets its own atlas — different silhouette, different weapon, and
 // its own draw cycle driven off the real shot timer. Enemy types that have no
@@ -4897,12 +4897,14 @@ const ENV={
 };
 let _envImg=null,_envReady=false;
 const EPARTS={
-  torso  :[  0,  0,162,360, .50,.06],
-  shin   :[164,  0,121,201, .46,.05],
-  forearm:[287,  0,112,137, .30,.10],
-  uparm  :[401,  0, 76,125, .50,.10],
-  sode   :[479,  0,117,108, .50,.20],
-  katana :[  0,362,498, 38, .17,.55]     // pivot mid-grip, where the fist closes
+  // Repainted Nov 2026: separate thigh, fist painted to grip the sword.
+  torso  :[  0,  0,102,214, .49,.00],   // hooded head to skirt hem
+  thigh  :[105,  0, 56,132, .45,.04],   // waist tie to knee wrap
+  shin   :[164,  0, 54,110, .40,.03],   // knee to sole, foot forward
+  forearm:[221,  0, 32, 92, .50,.04],   // elbow to fist
+  uparm  :[  0,217, 39, 72, .50,.07],
+  sode   :[ 42,217, 60, 54, .40,.12],
+  katana :[  0,292,252, 27, .12,.48]    // pivot mid-grip
 };
 // The art is ~920px tall assembled; the skeleton is ~78 units from crest to
 // heel. One number converts between them.
@@ -4914,7 +4916,7 @@ const PART_SCALE=.085;
 // directly under the torso hem (KN=0) and the scale is solved backwards
 // from wanting the head near y=0 and the foot at y=62. A proper thigh
 // piece would let him be scaled down and given a real stride.
-const EPART_SCALE=.112;
+const EPART_SCALE=.1688;
 
 let _partsImg=null,_partsReady=false,_epartsImg=null,_epartsReady=false;
 // Each atlas loads independently, so a painted player can fight procedural
@@ -6251,7 +6253,9 @@ function drawEnemy(e){
     // and the skeleton wants the foot at y=62.
     // The ENEMY skeleton stands on y=56 (its procedural legs run 40..56), not
     // the player's 58 — using the player's number left the ninja hovering.
-    const HX=1.5,HY=35.6,KN=0,SX=1.2,SY=10,UA=11,FA=12;
+    // Measured off the new sheet at EPART_SCALE: hip under the sash, knee at
+    // the thigh's wrap, foot lands on y=62.
+    const HX=0,HY=24.6,KN=18.4,SX=2.4,SY=11.2,UA=10.6,FA=12.6;
     const _m0=gx.getTransform();
 
     if(e.dieAt){
@@ -6269,30 +6273,34 @@ function drawEnemy(e){
     const eleg=(dir,al)=>{
       gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.30+.22*spd:.06));
       // The trailing leg lifts its foot off the ground on the way forward.
-      gx.translate(.4,KN-(eMov?Math.max(0,Math.cos(ph)*dir)*2.2*spd:0));gx.rotate(Math.max(0,-st*dir)*(.4+.45*spd));
+      drawEPart('thigh',0,0,0,1,al);
+      gx.translate(0,KN-(eMov?Math.max(0,Math.cos(ph)*dir)*2.2*spd:0));gx.rotate(Math.max(0,-st*dir)*(.4+.45*spd));
       drawEPart('shin',0,0,0,1,al);
       gx.restore();
     };
     // Swing: winds back, drives through, recovers — the same shape as the
     // player's, read off atkCD instead of atkT.
-    const eArm=-sw*1.5+.35+st*(eMov?.12:0)-hurt*.4;
-    const eElb=.5+sw*.5;
+    // Rest: upper arm angled forward, forearm raised, sword held up in guard.
+    // Strike: arm goes from raised high down through the cut.
+    const eArm=-.35-sw*1.5+st*(eMov?.12:0)+hurt*.4;
+    const eElb=-.75+sw*.35;
+    const eBlade=sw>0?-Math.PI/2-.6+(1-sw)*2.5:-Math.PI/2+.75;   // chop follows through low
 
     eleg(-1,FAR);
-    gx.save();gx.translate(SX-1.6,SY);gx.rotate(eArm*.5+.3);
+    gx.save();gx.translate(SX-1.6,SY);gx.rotate(.25+st*(eMov?-.25:0));
     drawEPart('uparm',0,0,0,1,FAR);
-    gx.translate(0,UA);gx.rotate(eElb*.7);drawEPart('forearm',0,0,0,1,FAR);
+    gx.translate(0,UA);gx.rotate(-.5);drawEPart('forearm',0,0,0,1,FAR);
     gx.restore();
     eleg(1,1);
-    drawEPart('torso',0,2.4,-hurt*.25);
-    drawEPart('sode',-3.4,8,0);
+    drawEPart('torso',0,0,-hurt*.25);
     gx.save();gx.translate(SX,SY);gx.rotate(eArm);
     drawEPart('uparm',0,0,0);
+    drawEPart('sode',-1,-1.5,-eArm*.5);         // shoulder guard rides the arm
     gx.translate(0,UA);gx.rotate(eElb);
     // Sword first, then the forearm over it, so the fist wraps the grip
     // instead of the handle being pasted on top of the hand. The pivot is the
     // fist's centre in the forearm art (measured from the sheet: ~(5,10)).
-    drawEPart('katana',4.6,10.4,-Math.PI/2+.9-eArm-eElb);
+    drawEPart('katana',0,FA,eBlade-eArm-eElb);
     drawEPart('forearm',0,0,0);
     gx.restore();
     // The ninja's own cut: a cold steel crescent that follows the blade
