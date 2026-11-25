@@ -4963,8 +4963,9 @@ _loadAtlas(EPARTS_SRC,im=>{_epartsImg=im;_epartsReady=true;},'enemy');
 _loadAtlas(ENV_SRC   ,im=>{_envImg=im;_envReady=true;},    'scenery');
 _loadAtlas(APARTS_SRC,im=>{_apartsImg=im;_apartsReady=true;},'archer');
 // Painted te-date shields, three tiers: rope-bound planks, iron-banded
-// lacquer (with an arrow in it), and iron-plated elite.
-const SHIELD_SRC=['shield-parts.png'],SHIELDS=[[0,0,80,184],[83,0,110,193],[196,0,94,198]];
+// lacquer (with an arrow in it), and iron-plated elite. All carry the Blood
+// Shogun's crest: three blood drops in a ring.
+const SHIELD_SRC=['shield-parts.png'],SHIELDS=[[0,0,79,184],[82,0,111,193],[196,0,94,197]];
 let _shieldImg=null;
 _loadAtlas(SHIELD_SRC,im=>{_shieldImg=im;},'shield');
 _loadAtlas(BPARTS_SRC,im=>{_bpartsImg=im;_bpartsReady=true;_bossAtlas[0]=im;},'boss');
