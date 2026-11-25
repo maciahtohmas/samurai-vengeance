@@ -4853,7 +4853,7 @@ const PARTS={
   uparm   :[  0,171, 51,100, .50,.07],
   forearm :[ 54,171, 38,110, .50,.04],
   sode    :[ 95,171, 77, 76, .35,.10],
-  katana  :[  0,284,325, 33, .143,.34],  // pivot mid-grip
+  katana  :[  0,284,325, 33, .206,.34],  // pivot where the front fist closes, just below the guard (tsuba at .26)
   uparm2  :[  0,171, 51,100, .50,.07],   // far arm reuses the near art, shaded
   forearm2:[ 54,171, 38,110, .50,.04]
 };
@@ -4925,7 +4925,7 @@ const EPARTS={
   forearm:[221,  0, 32, 92, .50,.04],   // elbow to fist
   uparm  :[  0,217, 39, 72, .50,.07],
   sode   :[ 42,217, 60, 54, .40,.12],
-  katana :[  0,292,252, 27, .12,.48]    // pivot mid-grip
+  katana :[  0,292,252, 27, .20,.48]    // front fist just below the guard (tsuba at .25)
 };
 // The art is ~920px tall assembled; the skeleton is ~78 units from crest to
 // heel. One number converts between them.
@@ -5641,7 +5641,8 @@ function drawPlayer(){
       const u=R(0,UPARM,armRot),f=R(FIST_X,FOREARM,armRot+elbow-FA_OFF);
       const nf=[SH_X+u[0]+f[0],SH_Y+u[1]+f[1]];
       const B=-Math.PI/2+swayA;
-      const tx=nf[0]-Math.cos(B)*3.4,ty=nf[1]-Math.sin(B)*3.4;
+      // back hand at the pommel end of the handle, a fist's width apart
+      const tx=nf[0]-Math.cos(B)*7.1,ty=nf[1]-Math.sin(B)*7.1;
       const sx=SH_X-3.0,sy=SH_Y+.6,L1=UPARM,L2=FOREARM;
       let dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy);
       d=Math.max(Math.abs(L1-L2)+.01,Math.min(L1+L2-.01,d));
@@ -6371,7 +6372,7 @@ function drawEnemy(e){
       const rot=(x,y,t)=>[x*Math.cos(t)-y*Math.sin(t),x*Math.sin(t)+y*Math.cos(t)];
       const e1=rot(0,UA,eArm),e2=rot(0,FA,eArm+eElb);
       const fx=SX+e1[0]+e2[0],fy=SY+e1[1]+e2[1];          // near fist
-      const tx=fx-Math.cos(eBlade)*3.6,ty=fy-Math.sin(eBlade)*3.6;  // further down the grip
+      const tx=fx-Math.cos(eBlade)*6.6,ty=fy-Math.sin(eBlade)*6.6;  // at the pommel end of the grip
       const sx=SX-2.2,sy=SY+.4;
       let dx=tx-sx,dy=ty-sy,d=Math.hypot(dx,dy);const L1=UA,L2=FA;
       d=Math.max(Math.abs(L1-L2)+.01,Math.min(L1+L2-.01,d));
