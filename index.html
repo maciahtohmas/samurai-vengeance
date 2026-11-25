@@ -4871,6 +4871,10 @@ const APARTS_SRC=['archer-parts.png','sprites/archer-parts.png'];
 const APARTS={
   torso :[  0,  0,166,473, .50,.05],
   leg   :[168,  0,130,290, .46,.04],
+  // The leg is one painting; these split it at the knee (the greave's top
+  // strap) so the archer can bend it. They overlap by 10px so no gap opens.
+  legT  :[168,  0,130, 96, .46,.12],
+  legB  :[168, 84,130,206, .46,.02],
   bowarm:[300,  0,225,191, .90,.30],   // forearm and bow as one; pivot at the elbow
   uparm :[527,  0, 78,126, .50,.10],
   bow   :[  0,475,599, 78, .50,.50],
@@ -6206,8 +6210,11 @@ function drawEnemy(e){
                  -Math.abs(Math.sin(e.an*.22))*(eMov?1.6:0)+Math.sin(e.an*.05)*(eMov?.7:1.6));
 
     const aleg=(dir,al)=>{
-      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.40:.05)+(pull>0?dir*.10:0));
-      drawAPart('leg',0,0,0,1,al);gx.restore();
+      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.48:.05)+(pull>0?dir*.10:0)-dir*.06);
+      gx.save();gx.translate(0,6.7);gx.rotate(.08+(eMov?Math.max(0,st*dir)*.95:0)+(pull>0?.12:0));   // trailing leg bends as it lifts
+      drawAPart('legB',0,0,0,1,al);gx.restore();
+      drawAPart('legT',0,0,0,1,al);
+      gx.restore();
     };
 
     aleg(-1,FAR);
@@ -6270,11 +6277,13 @@ function drawEnemy(e){
     if(eMov){gx.translate(0,56);gx.rotate(.07*spd);gx.translate(0,-56);}
     if(eMov&&e.gnd!==false&&Math.abs(Math.cos(ph))>.985&&(e._dustT||0)<e.an-8){e._dustT=e.an;_dust(e.x+e.w/2-e.face*4,e.y+e.h-2,e.face);}
 
+    const crouch=eMov?.45:1;            // settles into a fighting crouch when still
+    gx.translate(0,1.1*crouch);         // bent knees: the body sinks to keep the feet down
     const eleg=(dir,al)=>{
-      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.30+.22*spd:.06));
+      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.30+.22*spd:.06)-dir*.16*crouch);
       // The trailing leg lifts its foot off the ground on the way forward.
       drawEPart('thigh',0,0,0,1,al);
-      gx.translate(0,KN-(eMov?Math.max(0,Math.cos(ph)*dir)*2.2*spd:0));gx.rotate(Math.max(0,-st*dir)*(.4+.45*spd));
+      gx.translate(0,KN-(eMov?Math.max(0,Math.cos(ph)*dir)*2.2*spd:0));gx.rotate(Math.max(0,st*dir)*(.5+.5*spd)+(dir>0?.34:.14)*crouch);   // trailing leg bends as it lifts
       drawEPart('shin',0,0,0,1,al);
       gx.restore();
     };
