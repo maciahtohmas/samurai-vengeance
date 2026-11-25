@@ -4521,7 +4521,7 @@ function drawGame(){
       // Archer's paradox: the shaft flexes and wobbles leaving the bow and
       // settles in flight.
       const ag=p.age||0;gx.rotate(Math.sin(ag*.9)*.09*Math.exp(-ag/18));
-      drawAPart('arrow',0,0,0,1.15);
+      drawAPart('arrow',0,0,0,1);
       gx.restore();return;
     }
     // Outer glow
@@ -4879,21 +4879,20 @@ const BPARTS={
 const BPART_SCALE=.155;
 let _bpartsImg=null,_bpartsReady=false;
 
-const APARTS_SRC=['archer-parts.png','sprites/archer-parts.png'];
+const APARTS_SRC=['archer2-parts.png','archer-parts.png'];
 const APARTS={
-  torso :[  0,  0,166,473, .50,.05],
-  leg   :[168,  0,130,290, .46,.04],
-  // The leg is one painting; these split it at the knee (the greave's top
-  // strap) so the archer can bend it. They overlap by 10px so no gap opens.
-  legT  :[168,  0,130, 96, .46,.12],
-  legB  :[168, 84,130,206, .46,.02],
-  bowarm:[300,  0,225,191, .90,.30],   // forearm and bow as one; pivot at the elbow
-  uparm :[527,  0, 78,126, .50,.10],
-  bow   :[  0,475,599, 78, .50,.50],
-  quiver:[  0,555,340, 69, .30,.50],
-  arrow :[342,555,229, 18, .10,.50]
+  // Repainted Nov 2026: jingasa archer. Pivots measured off the sheet.
+  torso :[  0,  0,114,227, .47,.76],   // pivot at the hip, under the sash
+  bow   :[117,  0, 47,289, .79,.54],   // mirrored so it bulges at the target; string erased, drawn live
+  thigh :[167,  0, 60,124, .44,.05],
+  shin  :[230,  0, 58,109, .32,.09],
+  uparm :[291,  0, 50, 83, .50,.08],
+  handO :[344,  0, 30,103, .50,.04],   // string hand, fingers curled
+  handF :[  0,292, 28, 88, .50,.04],   // bow hand, fist
+  quiver:[ 31,292,196, 52, .50,.50],
+  arrow :[230,292,160, 14, .12,.50]    // pivot near the nock
 };
-const APART_SCALE=.088;
+const APART_SCALE=.1675;
 let _apartsImg=null,_apartsReady=false;
 // Scenery. Unlike the characters these are placed by the EXISTING parallax
 // code rather than a new layout — the layers already scroll, wrap and pick
@@ -6216,7 +6215,9 @@ function drawEnemy(e){
     const hurt=(e.hurtT||0)/7;
     const pull=e.shotCD<28?Math.min(1,(28-e.shotCD)/28):0;   // drawing
     const snap=e.shotCD>82?Math.min(1,(e.shotCD-82)/8):0;    // release recoil
-    const HX=1.4,HY=36,SX=1.0,SY=11,UA=9;
+    // Hip at y=27.5 so thigh (18.1) and shin (16.4) put the sole on y=62.
+    const HY=27.5,KN=18.1,SX=1.25,SY=HY-15.1,UA=11.3*.82,FA=14.1*.82,FF=12.2*.82;
+    const rot=(x,y,t)=>[x*Math.cos(t)-y*Math.sin(t),x*Math.sin(t)+y*Math.cos(t)];
 
     if(e.dieAt){
       const d=Math.min(1,(performance.now()-e.dieAt)/CORPSE_MS),ee=d*d;
@@ -6225,41 +6226,66 @@ function drawEnemy(e){
       gx.globalAlpha=1-Math.max(0,d-.5)/.5*.62;
     }
     gx.translate(hurt*hurt*8*(e.hurtDir||1)*e.face + snap*-3,
-                 -Math.abs(Math.sin(e.an*.22))*(eMov?1.6:0)+Math.sin(e.an*.05)*(eMov?.7:1.6));
+                 -Math.abs(Math.cos(e.ph||0))*(eMov?1.8:0)+Math.sin(e.an*.05)*(eMov?.5:1.2));
 
     const aleg=(dir,al)=>{
-      gx.save();gx.translate(HX,HY);gx.rotate(st*dir*(eMov?.48:.05)+(pull>0?dir*.10:0)-dir*.06);
-      gx.save();gx.translate(0,6.7);gx.rotate(.08+(eMov?Math.max(0,st*dir)*.95:0)+(pull>0?.12:0));   // trailing leg bends as it lifts
-      drawAPart('legB',0,0,0,1,al);gx.restore();
-      drawAPart('legT',0,0,0,1,al);
+      gx.save();gx.translate(0,HY);
+      gx.rotate(st*dir*(eMov?.45:.04)-dir*(pull>0?.18:.10));          // stance widens as he draws
+      drawAPart('thigh',0,0,0,1,al);
+      gx.translate(0,KN);gx.rotate((eMov?Math.max(0,st*dir)*.9:0)+(dir>0?.10:.22));
+      drawAPart('shin',0,0,0,1,al);
       gx.restore();
     };
 
+    // Bow arm (the far arm) held out at the target; braces as he draws and
+    // kicks on release. Its fist is where the bow's grip goes.
+    const r1=-1.5-pull*.06+snap*.25+(eMov?st*.06:0), r2=.06-pull*.06+snap*.2;
+    const bs=[SX-1.8,SY+.6];
+    const e1=rot(0,UA,r1),e2=rot(-.4*.82,FF,r1+r2);
+    const fist=[bs[0]+e1[0]+e2[0],bs[1]+e1[1]+e2[1]];
+    const tilt=pull*.10-snap*.06;
+    const nT=rot(-4.0,-23.3,tilt),nB=rot(-4.8,18.3,tilt);
+    const top=[fist[0]+nT[0],fist[1]+nT[1]],bot=[fist[0]+nB[0],fist[1]+nB[1]];
+    // String hand: rests on the string at the grip, comes back to the cheek.
+    const rest=[fist[0]-4.4,fist[1]-.6],cheek=[SX+2.4,SY-5.6];
+    const k=Math.min(1,pull*1.05);
+    const hand=snap>0?[rest[0]-2-snap*2,rest[1]-1]:[rest[0]+(cheek[0]-rest[0])*k,rest[1]+(cheek[1]-rest[1])*k];
+    const strungTo=snap>0||k<.02?null:hand;
+
     aleg(-1,FAR);
-    drawAPart('quiver',-5,14,-.35,1,.85);          // slung on the back
-    // Back arm: pulls to the ear as the draw builds.
-    gx.save();gx.translate(SX-1.4,SY);gx.rotate(.55+pull*.75-snap*.5);
-    drawAPart('uparm',0,0,0,1,FAR);gx.restore();
-    aleg(1,1);
-    drawAPart('torso',0,1.5,-hurt*.22+pull*.05);
-    // Bow arm: upper arm out, then the forearm-and-bow as one piece. It braces
-    // straighter as the draw builds and kicks on release.
-    const r1=-1.45-pull*.10+snap*.22+st*(eMov?.08:0);
-    const r2=.30-pull*.22+snap*.3;
-    gx.save();
-    gx.translate(SX,SY);
-    gx.rotate(r1);
-    drawAPart('uparm',0,0,0);
-    gx.translate(0,UA);
-    gx.rotate(r2);
-    drawAPart('bowarm',0,0,0);
-    // The full bow, held upright. The bowarm piece only carries a fragment of
-    // one limb, so on its own the archer appeared to be holding a stick. The
-    // shoulder and elbow rotations are subtracted so the bow stands vertical
-    // in the BODY's space no matter where the arm is, which is how a yumi is
-    // actually carried. It cants back a little as the draw builds.
-    drawAPart('bow',4,1,-Math.PI/2-r1-r2+pull*.12,.92,.95);
+    drawAPart('quiver',-6.5,HY-14,-1.25,.62,1);           // slung across the back, fletching up
+    gx.save();gx.translate(bs[0],bs[1]);gx.rotate(r1);
+    drawAPart('uparm',0,0,0,.82,FAR);
+    gx.translate(0,UA);gx.rotate(r2);drawAPart('handF',0,0,0,.82,FAR);
     gx.restore();
+    // the bow, upright in the body's space at the fist
+    gx.save();gx.translate(fist[0],fist[1]);gx.rotate(tilt);drawAPart('bow',0,0,0,1);gx.restore();
+    aleg(1,1);
+    drawAPart('torso',0,HY,-hurt*.22+pull*.04);
+    // the string: straight when slack, a V to the fingers when drawn, a
+    // shiver for a few frames after the release
+    gx.strokeStyle='rgba(196,186,160,.75)';gx.lineWidth=.4;gx.beginPath();gx.moveTo(top[0],top[1]);
+    if(strungTo)gx.lineTo(strungTo[0],strungTo[1]);
+    else if(snap>0){const mx=(top[0]+bot[0])/2,my=(top[1]+bot[1])/2;gx.lineTo(mx+Math.sin(e.an*2.3)*snap*1.6,my);}
+    gx.lineTo(bot[0],bot[1]);gx.stroke();
+    // nocked arrow, from the fingers through the grip, until it is loosed
+    if(snap<=0){
+      const ang=Math.atan2(fist[1]-hand[1],fist[0]-hand[0]);
+      drawAPart('arrow',hand[0],hand[1],ang,.95);
+    }
+    // String arm (near): shoulder and elbow solved to put the fingers on the
+    // string, elbow kept behind and up the way an archer draws.
+    {
+      const L1=UA,L2=FA,sx=SX,sy=SY;
+      let dx=hand[0]-sx,dy=hand[1]-sy,d=Math.hypot(dx,dy);
+      d=Math.max(Math.abs(L1-L2)+.01,Math.min(L1+L2-.01,d));
+      const base=Math.atan2(dy,dx),c=Math.acos((L1*L1+d*d-L2*L2)/(2*L1*d));
+      const pick=[base+c,base-c].map(a=>({a,ex:sx+Math.cos(a)*L1}));
+      const a1=(pick[0].ex<pick[1].ex?pick[0]:pick[1]).a;   // elbow behind
+      const ex=sx+Math.cos(a1)*L1,ey=sy+Math.sin(a1)*L1,a2=Math.atan2(hand[1]-ey,hand[0]-ex);
+      gx.save();gx.translate(sx,sy);gx.rotate(a1-Math.PI/2);drawAPart('uparm',0,0,0,.82);
+      gx.translate(0,L1);gx.rotate(a2-a1);drawAPart('handO',0,0,0,.82);gx.restore();
+    }
     gx.restore();
     return;
   }
@@ -7546,8 +7572,8 @@ function _drawArrowFX(){
       // shaft quivers for the first few frames after it lands
       gx.beginPath();gx.rect(-60,-60,120,60);gx.clip();
       gx.rotate(f.a+Math.sin(f.life*1.3)*.06*Math.max(0,(f.life-100)/20));
-      drawAPart('arrow',-14,0,0,1.15);
-    } else {gx.rotate(f.a);drawAPart('arrow',0,0,0,1.15*f.sc);}
+      drawAPart('arrow',-14,0,0,1);
+    } else {gx.rotate(f.a);drawAPart('arrow',0,0,0,f.sc);}
     gx.restore();
   }
 }
