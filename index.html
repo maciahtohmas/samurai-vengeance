@@ -4822,22 +4822,24 @@ const SHEETS={
 // subfolder from a phone browser is awkward), so the root is tried first; the
 // old sprites/ path stays as a fallback. It used to be the other way round,
 // and every atlas waited on a 404 before loading.
-const PARTS_SRC=['samurai-parts.png','sprites/samurai-parts.png'];
+const PARTS_SRC=['samurai2-parts.png','samurai-parts.png'];
 // name: [atlasX, atlasY, w, h, pivotX, pivotY]
 // The pivot is the JOINT, as a fraction of the piece — the shoulder on an arm,
 // the neck on a head, the grip on a katana — because that is the point the
 // skeleton rotates around.
 const PARTS={
-  torso   :[  0,  0,186,377, .50,.07],
-  shin    :[188,  0,121,247, .46,.04],
-  head    :[311,  0,175,201, .46,.90],
-  thigh   :[488,  0,121,159, .50,.06],
-  sode    :[611,  0,110,140, .50,.15],
-  forearm :[  0,379,111,139, .30,.10],   // near arm, gauntleted hand
-  forearm2:[113,379,130,128, .28,.10],   // far arm, bare fist
-  uparm2  :[245,379, 75, 85, .50,.10],
-  uparm   :[322,379, 65, 79, .50,.10],
-  katana  :[  0,520,498, 34, .055,.55]
+  // Repainted Nov 2026 (Aizumi, gold-laced indigo armour). Pivots measured
+  // off the sheet: neck, collar, waist tie, knee strap, shoulder cap, elbow.
+  torso   :[  0,  0,121,168, .60,.04],   // pivot at the collar
+  thigh   :[124,  0, 74,163, .42,.09],   // waist tie
+  shin    :[201,  0, 68,131, .32,.25],   // knee strap
+  head    :[272,  0, 98,107, .74,.93],   // base of the neck
+  uparm   :[  0,171, 51,100, .50,.07],
+  forearm :[ 54,171, 38,110, .50,.04],
+  sode    :[ 95,171, 77, 76, .35,.10],
+  katana  :[  0,284,325, 33, .143,.34],  // pivot mid-grip
+  uparm2  :[  0,171, 51,100, .50,.07],   // far arm reuses the near art, shaded
+  forearm2:[ 54,171, 38,110, .50,.04]
 };
 // Enemy atlas. Same idea, fewer pieces — the ninja's head is painted onto his
 // torso, which is fine because enemies never turn their heads independently.
@@ -4912,7 +4914,7 @@ const EPARTS={
 };
 // The art is ~920px tall assembled; the skeleton is ~78 units from crest to
 // heel. One number converts between them.
-const PART_SCALE=.085;
+const PART_SCALE=.1913;
 // Tuned so the ninja stands shorter than the player, as the procedural
 // enemies did — the samurai should read as the bigger silhouette.
 // The ninja sheet has no thigh — the forearm was painted across it, so it
@@ -5566,8 +5568,10 @@ function drawPlayer(){
   // stride, bounce, squash, lean, atkPose, _parry, the death collapse, trail —
   // is in the transform or used below, so the art inherits the whole rig.
   if(_partsReady){
-    const HIP_X=2.3,HIP_Y=26.5,KNEE=11.5;
-    const SH_X=1.8,SH_Y=12.2,UPARM=6.2,FOREARM=10.5;
+    // Skeleton for the repainted sheet: collar at (0,-4.5), hip under the
+    // sash, knee at the thigh's strap, foot on y=58.
+    const HIP_X=-1.4,HIP_Y=13.6,KNEE=26.4;
+    const SH_X=-2.0,SH_Y=-.8,UPARM=11.4,FOREARM=12.5,ARM_SC=.70,FIST_X=-.62;
 
     // Turning him a few degrees toward the camera. The art is painted in flat
     // side profile, so a real three-quarter view would need new art — but the
@@ -5576,7 +5580,7 @@ function drawPlayer(){
     // are rig values. Before this the far leg was drawn at the SAME hip x as
     // the near one, so in an idle pose they stacked perfectly and he showed a
     // single leg edge-on.
-    const CANT=1.15;        // torso widening — chest toward the viewer
+    const CANT=1.0;         // the new torso is painted with its own depth
     const STANCE=2.7;       // how far the far leg sits behind the near one
     const FAR_A=FAR;        // far-side limbs: solid and shaded (see _darkOf)
 
@@ -5587,7 +5591,7 @@ function drawPlayer(){
       gx.translate(HIP_X-dir*STANCE,HIP_Y+_sp.crouch);
       gx.rotate(hip);
       drawPart('thigh',0,0,0,1,alpha);
-      gx.translate(.6,KNEE);
+      gx.translate(0,KNEE);
       // Knees only bend one way, so the stride's contribution is clamped
       // positive and the stance's baseline bend is added on top.
       gx.rotate(Math.max(0,-stride*dir)*.45+knee*.35);
@@ -5606,26 +5610,21 @@ function drawPlayer(){
 
     leg(-1,FAR_A);                               // far leg
     gx.save();                                   // far arm, set back for depth
-    gx.translate(SH_X-3.6,SH_Y);
+    gx.translate(SH_X-3.0,SH_Y+.6);
     gx.rotate(armRot*.55+.30);
-    drawPart('uparm2',0,0,0,1,FAR_A);
+    drawPart('uparm2',0,0,0,ARM_SC,FAR_A);
     gx.translate(0,UPARM);
     gx.rotate(elbow*.7);
-    drawPart('forearm2',0,0,0,1,FAR_A);
+    drawPart('forearm2',0,0,0,ARM_SC,FAR_A);
     gx.restore();
-    // Far shoulder guard. The atlas has one sode; drawing it again behind the
-    // torso gives him a second shoulder, which is most of what sells the turn.
-    drawPart('sode',-5.6,-1.4,trail*.8,.94,FAR_A);
+    // (The new torso has its far shoulder guard painted on.)
     leg(1,1);                                    // near leg
     // Widened about the body centreline. The torso pivot is .50, so this adds
     // chest on both sides rather than shunting him sideways.
     gx.save();gx.scale(CANT,1);
-    drawPart('torso',0,-.8,trail*.35);
+    drawPart('torso',0,-4.5,trail*.35);
     gx.restore();
-    drawPart('sode',-3.9,-2,trail*.8);
-    gx.save();gx.scale(1.06,1);
-    drawPart('head',-1.6,-4.5,trail*1.1);
-    gx.restore();
+    drawPart('head',.6,-3.6,trail*1.1,.9);
 
     // Two-segment arm. The new art splits upper arm and forearm, so the elbow
     // genuinely bends — it leads on the wind-up and straightens through the
@@ -5634,14 +5633,14 @@ function drawPlayer(){
     gx.save();
     gx.translate(SH_X,SH_Y);
     gx.rotate(armRot);
-    drawPart('uparm',0,0,0);
+    drawPart('uparm',0,0,0,ARM_SC);
     gx.translate(0,UPARM);
     gx.rotate(elbow);
-    drawPart('forearm',0,0,0);
     // The katana art lies horizontal pointing right; the skeleton's sword
     // points up, hence the -PI/2. The joint rotations are subtracted so swayA
     // stays the blade's angle in the BODY's space, not the forearm's.
-    drawPart('katana',1.0,FOREARM,-Math.PI/2+swayA-armRot-elbow);
+    drawPart('katana',FIST_X,FOREARM,-Math.PI/2+swayA-armRot-elbow,.74);
+    drawPart('forearm',0,0,0,ARM_SC);          // over the grip: the fist holds it
     gx.restore();
 
     drawAttackArc();
